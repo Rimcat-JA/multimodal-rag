@@ -34,3 +34,8 @@ exclude-dependencies = ["triton"]
 [[tool.uv.index]]
 name = "amd-rocm"
 url = "https://stable.repo.amd.com/rocm/whl-next/"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
