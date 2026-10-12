@@ -1,0 +1,31 @@
+company_id,company,industry,period,title,release_date,url,size_mb,notes
+toyota,トヨタ自動車,manufacturing,fy2025_full,決算報告プレゼンテーション資料,2026-05-08,https://global.toyota/pages/global_toyota/ir/financial-results/2026_4q_presentation_jp.pdf,2.82,
+toyota,トヨタ自動車,manufacturing,fy2026_q1,決算報告プレゼンテーション資料,2026-08-04,https://global.toyota/pages/global_toyota/ir/financial-results/2027_1q_presentation_jp.pdf,1.89,
+mitsubishielectric,三菱電機,manufacturing,fy2025_full,決算説明会資料,2026-04-28,https://www.mitsubishielectric.co.jp/ja/pr/2026/pdf/0428_co2.pdf,1.14,replaces Sony (sony.com blocks automated access)
+mitsubishielectric,三菱電機,manufacturing,fy2026_q1,決算説明会資料,2026-07-31,https://www.mitsubishielectric.co.jp/ja/pr/2026/pdf/0731_co2.pdf,1.05,replaces Sony (sony.com blocks automated access)
+hitachi,日立製作所,manufacturing,fy2025_full,プレゼンテーション：2026年3月期連結決算の概要,2026-04-27,https://www.hitachi.com/content/dam/hitachi/global/ja_jp/press/files/2026/04/0427/2025_Anpre.pdf,1.82,
+hitachi,日立製作所,manufacturing,fy2026_q1,プレゼンテーション：2027年3月期 第1四半期 連結決算の概要,2026-07-29,https://www.hitachi.com/content/dam/hitachi/global/ja_jp/press/files/2026/07/0729/2026_1Qpre.pdf,1.77,
+mufg,三菱UFJフィナンシャル・グループ,finance,fy2025_full,2025年度（2026年3月期）決算 投資家説明会 プレゼンテーション資料,2026-05-19,https://www.mufg.jp/dam/ir/presentation/2025/pdf/slides2603_ja.pdf,5.59,p.12 corrected after release
+mufg,三菱UFJフィナンシャル・グループ,finance,fy2026_q1,決算ハイライト,2026-08-03,https://www.mufg.jp/dam/ir/fs/2026/pdf/highlights2606_ja.pdf,1.93,no Q1 presentation deck exists; substitute document
+smfg,三井住友フィナンシャルグループ,finance,fy2025_full,2025年度決算 投資家説明会 資料,2026-05-18,https://www.smfg.co.jp/investor/financial/latest_statement/2026_3/2026_fy_setumei.pdf,5.17,
+smfg,三井住友フィナンシャルグループ,finance,fy2026_q1,実績の概要,2026-08-26,https://www.smfg.co.jp/investor/financial/latest_statement/2027_3/2027_1q_03.pdf,3.18,no Q1 presentation deck exists; substitute document
+tokiomarine,東京海上ホールディングス,finance,fy2025_full,決算プレゼンテーション資料,2026-05-20,https://www.tokiomarinehd.com/ir/event/presentation/2025/gi58a80000002zwa-att/Tokio_Marine_2025Q4_Results_Presentation_j.pdf,2.61,corrected 2026-06-26 and 2026-08-12
+tokiomarine,東京海上ホールディングス,finance,fy2026_q1,2026年度第1四半期決算IR プレゼンテーション資料,2026-08-12,https://www.tokiomarinehd.com/ir/event/presentation/2026/gi58a80000003lo0-att/Tokio_Marine_2026Q1_Results_Presentation_j.pdf,1.81,
+takeda,武田薬品工業,pharma,fy2025_full,プレゼンテーション（2026年6月5日修正版）,2026-06-05,https://assets-dam.takeda.com/image/upload/v1780626057/Global/Investor/Financial-Results/FY2025/Q4_0605/qr2025_q4_p01_jp_20260605.pdf,4.37,corrected version replaces 2026-05-13 original
+takeda,武田薬品工業,pharma,fy2026_q1,プレゼンテーション,2026-07-30,https://assets-dam.takeda.com/image/upload/v1785395604/Global/Investor/Financial-Results/FY2026/Q1/qr2026_q1_p01_jp.pdf,2.77,
+astellas,アステラス製薬,pharma,fy2025_full,決算説明会資料,2026-04-27,https://astellas.com/content/dam/astellas-com/global/ja/confidential-documents/financial-results/4q2025_pre_jp.pdf,3.31,
+astellas,アステラス製薬,pharma,fy2026_q1,第1四半期 決算説明会資料,2026-08-05,https://astellas.com/content/dam/astellas-com/global/ja/confidential-documents/financial-results/1q2026_pre_jp.pdf,2.55,
+daiichisankyo,第一三共,pharma,fy2025_full,2025年度 決算説明会及び第6期中期経営計画説明会資料（訂正版）,2026-07-31,https://www.daiichisankyo.co.jp/files/investors/library/quarterly_result/2025/FY2025Q4_Presentation_Corrections_J.pdf,4.70,corrected version replaces 2026-05-11 original
+daiichisankyo,第一三共,pharma,fy2026_q1,2026年度 第1四半期 決算経営説明会資料,2026-07-31,https://www.daiichisankyo.co.jp/FY2026Q1_Financial_Results_Presentation_J.pdf,2.80,
+kddi,KDDI,it_telecom,fy2025_full,決算プレゼンテーション資料,2026-05-12,https://www.kddi.com/extlib/files/corporate/ir/library/presentation/2026/pdf/kddi_260512_main_T8v6VV.pdf,1.19,
+kddi,KDDI,it_telecom,fy2026_q1,決算プレゼンテーション資料,2026-08-07,https://www.kddi.com/extlib/files/corporate/ir/library/presentation/2027/pdf/kddi_260807_main_ILzSdX.pdf,3.86,
+fujitsu,富士通,it_telecom,fy2025_full,プレゼンテーション資料（2025年度 決算概要）,2026-04-28,https://global.fujitsu/-/media/Project/Fujitsu/Fujitsu-HQ/ir/documents/Financial_Results/FY2025/FY/2025FY-Financial-Summary-ja.pdf?sc_lang=ja-JP,2.16,site rate-limits scripts (429); may need manual download; corrected 2026-05-22
+fujitsu,富士通,it_telecom,fy2026_q1,プレゼンテーション資料（2026年度 第1四半期 決算概要）,2026-07-30,https://resources.global.fujitsu/prir/2026/07/2026Q1-Financial-Summary-ja.pdf,1.79,
+recruit,リクルートホールディングス,it_telecom,fy2025_full,プレゼンテーション資料（決算説明会）,2026-05-15,https://file.recruit-holdings.com/files/ja/Recruit_202603Q4_presentation_jp.pdf,11.46,
+recruit,リクルートホールディングス,it_telecom,fy2026_q1,プレゼンテーション資料（決算説明会）,2026-08-07,https://file.recruit-holdings.com/files/ja/Recruit_202703Q1_presentation_jp.pdf,6.22,release date uncertain (08-05 to 08-07)
+mitsubishicorp,三菱商事,trading_realestate,fy2025_full,決算説明会資料（2025年度）,2026-05-01,https://www.mitsubishicorp.com/jp/ja/ir/library/meetings/pdf/260501/20260501j.pdf,4.01,site refuses non-browser clients (403); may need manual download
+mitsubishicorp,三菱商事,trading_realestate,fy2026_q1,決算説明会資料（2026年度第1四半期）,2026-08-03,https://www.mitsubishicorp.com/jp/ja/ir/library/meetings/pdf/260803/20260803j.pdf,7.00,site refuses non-browser clients (403); may need manual download
+itochu,伊藤忠商事,trading_realestate,fy2025_full,2025年度 決算実績・2026年度 経営計画説明資料,2026-05-14,https://www.itochu.co.jp/ja/ir/financial_statements/2026/__icsFiles/afieldfile/2026/05/14/26_ended_02_1.pdf,2.98,release date is upload-folder date
+itochu,伊藤忠商事,trading_realestate,fy2026_q1,決算説明資料（第1四半期）,2026-08-07,https://www.itochu.co.jp/ja/ir/financial_statements/2027/__icsFiles/afieldfile/2026/08/07/27_1st_02.pdf,2.15,release date is upload-folder date
+mitsuifudosan,三井不動産,trading_realestate,fy2025_full,決算説明会資料 プレゼンテーション資料,2026-05-13,https://www.mitsuifudosan.co.jp/corporate/ir/presentation/pdf/InvestorsMeetingPresentation2605j.pdf,5.82,
+mitsuifudosan,三井不動産,trading_realestate,fy2026_q1,決算説明資料,2026-08-07,https://www.mitsuifudosan.co.jp/corporate/ir/presentation/pdf/FR_BH2608j.pdf,14.41,no Q1 presentation deck; 決算説明資料 is the only Q1 slide document
