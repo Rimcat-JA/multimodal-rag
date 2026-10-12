@@ -1,0 +1,17 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Secrets (API keys)
+.env
+
+# Source documents and generated artifacts (IR PDFs are copyrighted; keep them local)
+data/
+outputs/
