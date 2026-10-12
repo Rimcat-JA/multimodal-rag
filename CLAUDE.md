@@ -7,7 +7,7 @@
 決算説明資料の図表（グラフ・表）に強い RAG を作り、次の3方式を**自作の評価セットで定量比較**する。完成したアプリそのものより、**比較実験の正しさ**が成果物の中心。
 
 - **A. テキストのみ**：PyMuPDF でテキストを抽出 → BGE-M3 で埋め込み（基準）
-- **B. 図表キャプション**：図表 → 説明文と Markdown 表 → 埋め込み（B1: Claude API／B2: ローカルの Qwen2.5-VL）
+- **B. 図表キャプション**：ページ画像を丸ごと画像対応 LLM に渡し、ページ内の図表ごとに説明文と Markdown 表を出させて埋め込む（B1: Claude API／B2: ローカルの Qwen2.5-VL）。図表の切り出しはしない（README の Design decisions を参照）
 - **C. ページ画像検索**：ColQwen2.5／ColPali の複数ベクトル埋め込み ＋ Late Interaction（MaxSim）
 - 回答生成：どの方式でも、検索で見つかったページ画像と質問を Claude に渡して回答させる
 
@@ -53,7 +53,7 @@ Claude Code の PowerShell では PATH が古いことがあるので、コマ�
 
 ```
 src/multimodal_rag/
-  ingest/       PDF → ページ画像・テキスト・図表の切り出し
+  ingest/       PDF → ページ画像・テキスト（data/pages.jsonl）
   retrieval/    方式 A / B1 / B2 / C（共通のインターフェースで実装）
   generation/   回答生成（Claude）
   eval/         指標と評価の実行（metrics.py は保護）

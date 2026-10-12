@@ -3,10 +3,14 @@
 Multimodal RAG over financial-report charts and tables. The goal is to compare three retrieval approaches on a hand-built evaluation set:
 
 - **A. Text only**: PyMuPDF text extraction + text embeddings (baseline)
-- **B. Figure captioning**: charts and tables converted to captions and Markdown tables by a vision LLM (B1: Claude API, B2: local Qwen2.5-VL), then embedded
+- **B. Figure captioning**: a vision LLM reads each whole page image and returns one structured description per chart or table (type, title, unit, Markdown table, summary), which is then embedded (B1: Claude API, B2: local Qwen2.5-VL)
 - **C. Page-image retrieval**: ColQwen2.5 / ColPali multi-vector embeddings with late interaction (MaxSim)
 
-> Status: environment setup (week 0).
+> Status: data collected and pages rendered (week 1). 15 companies across 5 industries, 30 decks, 1,429 pages. Sources are listed in [docs/sources.csv](docs/sources.csv). The PDFs themselves are not redistributed.
+
+## Design decisions
+
+**Caption whole pages instead of cropping figures (method B).** I first tried locating figures from the PDF structure: clustered vector drawings, embedded images and detected tables, merged into regions. On a sample of six slides from four industries, the crops regularly left out what a captioner needs most: units, legends, axis labels and the slide title. Some figures that fill the whole slide were split into fragments, and some tables lost their middle rows. IR slides are designed so that one page carries one message, so cropping removes context instead of focusing it. Method B therefore sends the full page image and asks for one structured description per figure. That keeps figure-level retrieval units without the cropping step.
 
 ## Environment
 
