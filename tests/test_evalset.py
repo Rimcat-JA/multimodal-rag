@@ -1,8 +1,11 @@
 from multimodal_rag.evalset import (
     HEADER,
+    format_gold,
+    gold_page_list,
     load_questions,
     next_qid,
     normalize_number,
+    parse_gold,
     save_questions,
     validate,
 )
@@ -15,7 +18,6 @@ def row(**overrides):
         "qid": "q001",
         "question": "架空の質問",
         "gold_pages": "acme/fy2025_full/p001",
-        "gold_mode": "all",
         "answer": "架空の答え",
         "answer_value": "15.2",
         "answer_unit": "%",
@@ -29,8 +31,12 @@ def row(**overrides):
 
 
 def test_valid_rows_have_no_errors():
-    rows = [row(), row(qid="q002", gold_pages="acme/fy2025_full/p002;acme/fy2026_q1/p001",
-                       q_type="compare", answer_value="", answer_unit="")]
+    rows = [
+        row(),
+        row(qid="q002", gold_pages="acme/fy2025_full/p002;acme/fy2026_q1/p001",
+            q_type="compare", answer_value="", answer_unit=""),
+        row(qid="q003", gold_pages="acme/fy2025_full/p001|acme/fy2025_full/p002;acme/fy2026_q1/p001"),
+    ]
     assert validate(rows, HEADER, PAGES) == []
 
 
@@ -39,10 +45,34 @@ def test_wrong_header_is_reported_alone():
     assert len(errors) == 1 and "ヘッダー" in errors[0]
 
 
-def test_unknown_page_id_is_caught():
+def test_parse_and_format_gold_groups():
+    assert parse_gold("a") == [["a"]]
+    assert parse_gold("a|b|c") == [["a", "b", "c"]]
+    assert parse_gold("a;b") == [["a"], ["b"]]
+    assert parse_gold(" a | b ; c ") == [["a", "b"], ["c"]]
+    assert parse_gold("") == []
+    for s in ["a", "a|b|c", "a;b", "a|b;c"]:
+        assert format_gold(parse_gold(s)) == s
+    assert gold_page_list("a|b;c") == ["a", "b", "c"]
+
+
+def test_group_semantics_by_hand():
+    # The rule metrics.py will implement: answered if every group has a hit.
+    def answered(gold, retrieved):
+        return all(any(p in retrieved for p in g) for g in parse_gold(gold))
+
+    assert answered("a|b;c", {"b", "c"})
+    assert not answered("a|b;c", {"a", "b"})  # c is required
+    assert answered("a|b|c", {"c"})
+    assert not answered("a;b", {"a"})
+
+
+def test_bad_gold_pages_are_caught():
     # A typo like p01 instead of p001 would silently score as a miss.
-    errors = validate([row(gold_pages="acme/fy2025_full/p01")], HEADER, PAGES)
-    assert any("ありません" in e for e in errors)
+    assert any("ありません" in e for e in validate([row(gold_pages="acme/fy2025_full/p01")], HEADER, PAGES))
+    assert any("2回" in e for e in validate([row(gold_pages="acme/fy2025_full/p001|acme/fy2025_full/p001")], HEADER, PAGES))
+    assert any("2回" in e for e in validate([row(gold_pages="acme/fy2025_full/p001;acme/fy2025_full/p001")], HEADER, PAGES))
+    assert any("空のグループ" in e for e in validate([row(gold_pages="acme/fy2025_full/p001;;acme/fy2026_q1/p001")], HEADER, PAGES))
 
 
 def test_duplicate_qid_and_bad_code():

@@ -1,6 +1,6 @@
 # 評価セットの形式（eval/questions.csv）
 
-評価セットは開発者が手で作る（CLAUDE.md の「保護されたファイル」）。このファイルは形式の取り決めだけを書く。
+評価セットの作り方のルールは CLAUDE.md の「保護されたファイル」と、下の「作成と確認の方針」にある。このファイルは形式の取り決めを書く。
 
 ## 入力のしかた
 
@@ -10,8 +10,9 @@
 uv run streamlit run scripts/eval_editor.py
 ```
 
-- 左でページ画像を見ながら、右に質問を書く。「このページを根拠に追加」で根拠ページの ID が自動で入る。
-- 「同じ値が載っているページを探す」で、同じ数値が他のページにもないかを確認できる（`gold_mode=any` の判断用）。
+- 左でページ画像を見ながら、右に質問を書く。「根拠に追加（新しい条件）」で根拠ページの ID が自動で入る。
+- 同じ事実が載っている別のページは「直前の条件に『または』で追加」で加える。
+- 「同じ値が載っているページを探す」で、同じ数値が他のページにもないかを確認でき、見つかったページを「または」で加えられる。
 - 数値はカンマ付き・全角・△/▲ のマイナスで書いてもよい。保存時に整形し、形式チェックを通ったものだけが `questions.csv` に書かれる。
 - 画面の下に、目標の配分に対する進み具合が出る。
 
@@ -22,7 +23,7 @@ uv run streamlit run scripts/eval_editor.py
 - 1行目は次のヘッダーにする。
 
 ```
-qid,question,gold_pages,gold_mode,answer,answer_value,answer_unit,q_type,evidence,author,reviewed,notes
+qid,question,gold_pages,answer,answer_value,answer_unit,q_type,evidence,author,reviewed,notes
 ```
 
 ## 列
@@ -31,8 +32,7 @@ qid,question,gold_pages,gold_mode,answer,answer_value,answer_unit,q_type,evidenc
 |---|---|---|
 | `qid` | ○ | `q001` から連番。一度付けたら振り直さない。消した質問は欠番にする |
 | `question` | ○ | 利用者が実際に打ちそうな日本語。**スライドの見出しや文言をそのまま写さない**（テキスト検索が言葉の一致だけで有利になるのを防ぐ） |
-| `gold_pages` | ○ | 根拠ページの ID（`data/pages.jsonl` の `page_id`、例 `toyota/fy2025_full/p005`）。複数は `;` 区切り |
-| `gold_mode` | ○ | `all`：すべてのページが必要（例：通期と1Qの比較）／`any`：どれか1つで足りる（同じ値が複数ページに載っている）。ページが1つなら `all` |
+| `gold_pages` | ○ | 根拠ページの ID（`data/pages.jsonl` の `page_id`、例 `toyota/fy2025_full/p005`）を**グループの組み合わせ**で書く（下の表）。検索結果が**すべてのグループから1ページ以上**を含めば、その質問に答えられるとみなす |
 | `answer` | ○ | 文の形の正解 |
 | `answer_value` | 数値の質問のみ | 数値だけ。カンマ・単位・「約」は付けない。負の値は `-3.1`。**資料に表示された桁数のまま**書く（`15.2` と表示されていれば `15.2`） |
 | `answer_unit` | `answer_value` があるとき | 資料の表記どおり：`億円`、`百万円`、`千台`、`%`、`pt` など |
@@ -41,6 +41,17 @@ qid,question,gold_pages,gold_mode,answer,answer_value,answer_unit,q_type,evidenc
 | `author` | ○ | 問題を作ったのは誰か：`human`（人）／`claude`（Claude） |
 | `reviewed` | ○ | 誰が画像と照らし合わせて確認したか：`none`（未確認）／`ai`（AI が確認）／`human`（人が確認） |
 | `notes` | | 迷った点や、解釈の余地がある点のメモ。定型の質問には `#定型` を付ける |
+
+### `gold_pages` の書き方
+
+`;` は「かつ」（グループの区切り）、`|` は「または」（同じグループ内の別のページ）。
+
+| 書き方 | 意味 | 例 |
+|---|---|---|
+| `a` | 1ページだけ | 答えが1ページにしか載っていない |
+| `a\|b\|c` | どれか1ページで足りる | 同じ値がサマリーと詳細のページに繰り返し載っている |
+| `a;b` | 両方必要 | 通期の資料と1Qの資料の値を比べる |
+| `a\|b;c` | （a または b）かつ c | 比べる値の片方が複数ページに載っている（q010） |
 
 業界・企業・資料をまたぐかどうか・答えがテキスト層にあるかどうかは、`gold_pages` と `data/pages.jsonl` から自動で求めるので書かない。
 

@@ -9,6 +9,7 @@ row, and writes eval/questions.csv in the agreed format (eval/README.md).
 
 import csv
 import json
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -19,13 +20,14 @@ from multimodal_rag.evalset import (
     COMMON_UNITS,
     REVIEWED_LABELS,
     EVIDENCE_LABELS,
-    GOLD_MODE_LABELS,
     Q_TYPE_LABELS,
     load_questions,
     next_qid,
     normalize_number,
+    format_gold,
+    gold_page_list,
+    parse_gold,
     save_questions,
-    split_pages,
     validate_row,
 )
 
@@ -76,7 +78,6 @@ def reset_form() -> None:
     s.meta = {"author": "human", "reviewed": "none"}
     s.gold = []
     s.f_question = s.f_answer = s.f_value = s.f_unit_other = s.f_notes = ""
-    s.f_gold_mode = "all"
     s.f_q_type = None
     s.f_evidence = None
     s.f_unit = NO_UNIT
@@ -112,13 +113,31 @@ def step_page(delta: int) -> None:
     st.session_state.pg = max(1, min(page_counts[doc_id()], st.session_state.pg + delta))
 
 
-def add_gold(pid: str) -> None:
-    if pid not in st.session_state.gold:
-        st.session_state.gold.append(pid)
+# st.session_state.gold is a list of groups: [[p1, p2], [p3]] means (p1 or p2) and p3.
+
+def gold_pages_flat() -> list[str]:
+    return [p for g in st.session_state.gold for p in g]
+
+
+def add_gold_group(pid: str) -> None:
+    """This page is needed in addition to the existing groups (AND)."""
+    if pid not in gold_pages_flat():
+        st.session_state.gold.append([pid])
+
+
+def add_gold_alternative(pid: str) -> None:
+    """This page states the same fact as the last group (OR)."""
+    if pid in gold_pages_flat():
+        return
+    if st.session_state.gold:
+        st.session_state.gold[-1].append(pid)
+    else:
+        st.session_state.gold.append([pid])
 
 
 def remove_gold(pid: str) -> None:
-    st.session_state.gold.remove(pid)
+    st.session_state.gold = [[p for p in g if p != pid] for g in st.session_state.gold]
+    st.session_state.gold = [g for g in st.session_state.gold if g]
 
 
 def load_into_form() -> None:
@@ -130,10 +149,9 @@ def load_into_form() -> None:
     r = next(r for r in rows if r["qid"] == s.edit_select)
     s.editing = r["qid"]
     s.meta = {"author": r["author"], "reviewed": r["reviewed"]}
-    s.gold = split_pages(r["gold_pages"])
+    s.gold = parse_gold(r["gold_pages"])
     s.f_question, s.f_answer, s.f_notes = r["question"], r["answer"], r["notes"]
     s.f_value = r["answer_value"]
-    s.f_gold_mode = r["gold_mode"] or "all"
     s.f_q_type = r["q_type"] or None
     s.f_evidence = r["evidence"] or None
     unit = r["answer_unit"]
@@ -144,7 +162,7 @@ def load_into_form() -> None:
     else:
         s.f_unit, s.f_unit_other = OTHER_UNIT, unit
     if s.gold:
-        show_page(s.gold[0])
+        show_page(s.gold[0][0])
 
 
 def save() -> None:
@@ -156,8 +174,7 @@ def save() -> None:
     row = {
         "qid": s.editing or next_qid(rows),
         "question": s.f_question.strip(),
-        "gold_pages": ";".join(s.gold),
-        "gold_mode": s.f_gold_mode,
+        "gold_pages": format_gold(s.gold),
         "answer": s.f_answer.strip(),
         "answer_value": normalize_number(s.f_value),
         "answer_unit": unit,
@@ -202,12 +219,17 @@ with left:
                     max_value=page_counts[doc_id()], key="pg")
 
     pid = f"{doc_id()}/p{s.pg:03d}"
+    in_gold = pid in gold_pages_flat()
     b1, b2, b3, b4 = st.columns([1, 1, 3, 3])
     b1.button("◀ 前", on_click=step_page, args=(-1,), use_container_width=True)
     b2.button("次 ▶", on_click=step_page, args=(1,), use_container_width=True)
-    b3.button("このページを根拠に追加", on_click=add_gold, args=(pid,), type="primary",
-              use_container_width=True, disabled=pid in s.gold)
-    b4.code(pid, language=None)
+    b3.button("根拠に追加（新しい条件）", on_click=add_gold_group, args=(pid,), type="primary",
+              use_container_width=True, disabled=in_gold,
+              help="このページも必要（ほかの条件と「かつ」）")
+    b4.button("直前の条件に「または」で追加", on_click=add_gold_alternative, args=(pid,),
+              use_container_width=True, disabled=in_gold or not s.gold,
+              help="直前の条件と同じ事実が載っている別のページ")
+    st.code(pid, language=None)
 
     st.image(str(ROOT / pages[pid]["image"]), use_container_width=True)
     with st.expander("このページから取り出せたテキスト（方式Aが見る情報）"):
@@ -221,13 +243,18 @@ with left:
         if num.lstrip("-").replace(".", "").isdigit():
             whole, _, frac = num.lstrip("-").partition(".")
             variants.add(f"{int(whole):,}" + (f".{frac}" if frac else ""))
-        hits = [p for p, r in pages.items() if any(v in r["text"] for v in variants)]
+        # NFKC: some decks' text layers use Kangxi radicals (⽀) instead of the usual kanji (支)
+        variants = {unicodedata.normalize("NFKC", v) for v in variants}
+        hits = [p for p, r in pages.items()
+                if any(v in unicodedata.normalize("NFKC", r["text"]) for v in variants)]
         st.caption(f"{len(hits)}ページ（テキスト抽出で見つかったものだけ。画像の中の文字は対象外）")
         for hit in hits[:30]:
             h1, h2, h3 = st.columns([4, 1, 1])
             h1.write(f"`{hit}`")
             h2.button("表示", key=f"show_{hit}", on_click=show_page, args=(hit,))
-            h3.button("追加", key=f"add_{hit}", on_click=add_gold, args=(hit,), disabled=hit in s.gold)
+            h3.button("または", key=f"add_{hit}", on_click=add_gold_alternative, args=(hit,),
+                      disabled=hit in gold_pages_flat() or not s.gold,
+                      help="直前の条件に「または」で追加（同じ値が載っている別のページ）")
 
 with right:
     st.selectbox("編集する質問", [NEW] + [r["qid"] for r in rows], key="edit_select", on_change=load_into_form)
@@ -240,15 +267,18 @@ with right:
 
     st.text_area("質問（スライドの見出しをそのまま写さない）", key="f_question", height=100)
 
-    st.markdown("**根拠ページ**（左の「このページを根拠に追加」で入ります）")
+    st.markdown("**根拠ページ**（条件どうしは「かつ」、条件の中のページは「または」）")
     if not s.gold:
-        st.caption("まだありません")
-    for g in s.gold:
-        g1, g2, g3 = st.columns([4, 1, 1])
-        g1.write(f"`{g}`")
-        g2.button("表示", key=f"gshow_{g}", on_click=show_page, args=(g,))
-        g3.button("外す", key=f"gdel_{g}", on_click=remove_gold, args=(g,))
-    st.radio("根拠ページの扱い", list(GOLD_MODE_LABELS), key="f_gold_mode", format_func=GOLD_MODE_LABELS.get)
+        st.caption("まだありません。左の「根拠に追加（新しい条件）」で入ります")
+    for n, group in enumerate(s.gold, 1):
+        st.caption(f"条件{n}" + ("（どれか1ページ）" if len(group) > 1 else ""))
+        for g in group:
+            g1, g2, g3 = st.columns([4, 1, 1])
+            g1.write(f"`{g}`")
+            g2.button("表示", key=f"gshow_{g}", on_click=show_page, args=(g,))
+            g3.button("外す", key=f"gdel_{g}", on_click=remove_gold, args=(g,))
+    if s.gold:
+        st.caption(f"保存される形：`{format_gold(s.gold)}`")
 
     st.text_input("正解（文）", key="f_answer")
     v1, v2 = st.columns(2)
@@ -274,8 +304,8 @@ st.subheader(f"進み具合：{len(rows)}問（最初の目標は40問）")
 by_evidence = Counter(r["evidence"] for r in rows)
 by_q_type = Counter(r["q_type"] for r in rows)
 by_industry = Counter(
-    companies[split_pages(r["gold_pages"])[0].split("/")[0]]["industry"]
-    for r in rows if split_pages(r["gold_pages"])
+    companies[gold_page_list(r["gold_pages"])[0].split("/")[0]]["industry"]
+    for r in rows if gold_page_list(r["gold_pages"])
 )
 p1, p2, p3 = st.columns(3)
 with p1:

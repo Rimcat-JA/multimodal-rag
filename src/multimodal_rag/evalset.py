@@ -1,8 +1,17 @@
 """Read, write, normalize and validate the evaluation set (eval/questions.csv).
 
-The questions themselves are written by the developer (see CLAUDE.md). This
-module only handles the file format: the editor app and the validator script
-both go through it, so the CSV always has the same shape.
+Questions are written by the developer or by Claude under the rules in
+CLAUDE.md. This module only handles the file format: the editor app, the
+validator and the merge script all go through it, so the CSV always has the
+same shape.
+
+gold_pages format: groups separated by ";" (AND), alternatives within a group
+separated by "|" (OR). A retrieval result answers the question when it contains
+at least one page from every group.
+    "a"          one page
+    "a|b|c"      the same fact is printed on a, b and c; any one is enough
+    "a;b"        both a and b are needed (e.g. comparing two documents)
+    "a|b;c"      (a or b) and c
 """
 
 import csv
@@ -11,16 +20,12 @@ import unicodedata
 from pathlib import Path
 
 HEADER = [
-    "qid", "question", "gold_pages", "gold_mode", "answer",
+    "qid", "question", "gold_pages", "answer",
     "answer_value", "answer_unit", "q_type", "evidence", "author", "reviewed", "notes",
 ]
-REQUIRED = ["qid", "question", "gold_pages", "gold_mode", "answer", "q_type", "evidence", "author", "reviewed"]
+REQUIRED = ["qid", "question", "gold_pages", "answer", "q_type", "evidence", "author", "reviewed"]
 
 # Codes stored in the CSV -> labels shown to the person filling it in.
-GOLD_MODE_LABELS = {
-    "all": "すべて必要（根拠が1ページだけのときもこちら）",
-    "any": "どれか1つで足りる（同じ値が複数ページにある）",
-}
 Q_TYPE_LABELS = {
     "lookup": "1つの値を読む",
     "compare": "2つ以上の値を比べる（差・比率を含む）",
@@ -42,6 +47,8 @@ QID_RE = re.compile(r"^q\d{3,}$")
 # Plain number: optional minus, digits, optional decimals. No commas, units or "約".
 NUMBER_RE = re.compile(r"^-?\d+(\.\d+)?$")
 
+AND, OR = ";", "|"
+
 
 def normalize_number(text: str) -> str:
     """Turn a number as typed (or as printed in an IR deck) into the CSV form.
@@ -54,6 +61,22 @@ def normalize_number(text: str) -> str:
     if s[:1] in ("△", "▲"):
         s = "-" + s[1:].strip()
     return s
+
+
+def parse_gold(gold_pages: str) -> list[list[str]]:
+    """'a|b;c' -> [['a', 'b'], ['c']]. Empty groups are kept so validation can report them."""
+    if not gold_pages.strip():
+        return []
+    return [[p.strip() for p in group.split(OR) if p.strip()] for group in gold_pages.split(AND)]
+
+
+def format_gold(groups: list[list[str]]) -> str:
+    return AND.join(OR.join(group) for group in groups if group)
+
+
+def gold_page_list(gold_pages: str) -> list[str]:
+    """Every page mentioned in gold_pages, in order."""
+    return [p for group in parse_gold(gold_pages) for p in group]
 
 
 def qid_number(qid: str) -> int:
@@ -85,15 +108,11 @@ def save_questions(path: Path, rows: list[dict]) -> None:
         writer.writerows({k: r.get(k, "") for k in HEADER} for r in rows)
 
 
-def split_pages(gold_pages: str) -> list[str]:
-    return [p.strip() for p in gold_pages.split(";") if p.strip()]
-
-
 def validate_row(row: dict, page_ids: set[str]) -> list[str]:
     """Format problems in one row, as Japanese messages for the person editing."""
     errors = []
     labels = {
-        "qid": "qid", "question": "質問", "gold_pages": "根拠ページ", "gold_mode": "根拠ページの扱い",
+        "qid": "qid", "question": "質問", "gold_pages": "根拠ページ",
         "answer": "正解（文）", "q_type": "聞き方", "evidence": "根拠の種類",
         "author": "作成者", "reviewed": "確認",
     }
@@ -106,14 +125,17 @@ def validate_row(row: dict, page_ids: set[str]) -> list[str]:
         errors.append(f"qid「{qid}」は q001 の形にしてください")
 
     for col, allowed in (
-        ("gold_mode", GOLD_MODE_LABELS), ("q_type", Q_TYPE_LABELS), ("evidence", EVIDENCE_LABELS),
+        ("q_type", Q_TYPE_LABELS), ("evidence", EVIDENCE_LABELS),
         ("author", AUTHOR_LABELS), ("reviewed", REVIEWED_LABELS),
     ):
         value = (row.get(col) or "").strip()
         if value and value not in allowed:
             errors.append(f"{col}「{value}」は {sorted(allowed)} のどれかにしてください")
 
-    pages = split_pages(row.get("gold_pages") or "")
+    groups = parse_gold(row.get("gold_pages") or "")
+    if any(not g for g in groups):
+        errors.append("根拠ページに空のグループがあります（; や | の重なり・末尾を確認）")
+    pages = [p for g in groups for p in g]
     for p in pages:
         if p not in page_ids:
             errors.append(f"ページID「{p}」が data/pages.jsonl にありません")
