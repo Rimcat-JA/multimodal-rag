@@ -15,7 +15,9 @@ from pathlib import Path
 import streamlit as st
 
 from multimodal_rag.evalset import (
+    AUTHOR_LABELS,
     COMMON_UNITS,
+    REVIEWED_LABELS,
     EVIDENCE_LABELS,
     GOLD_MODE_LABELS,
     Q_TYPE_LABELS,
@@ -71,6 +73,7 @@ page_counts = Counter(p["doc_id"] for p in pages.values())
 def reset_form() -> None:
     s = st.session_state
     s.editing = None
+    s.meta = {"author": "human", "reviewed": "none"}
     s.gold = []
     s.f_question = s.f_answer = s.f_value = s.f_unit_other = s.f_notes = ""
     s.f_gold_mode = "all"
@@ -126,6 +129,7 @@ def load_into_form() -> None:
     _, rows = load_questions(QUESTIONS)
     r = next(r for r in rows if r["qid"] == s.edit_select)
     s.editing = r["qid"]
+    s.meta = {"author": r["author"], "reviewed": r["reviewed"]}
     s.gold = split_pages(r["gold_pages"])
     s.f_question, s.f_answer, s.f_notes = r["question"], r["answer"], r["notes"]
     s.f_value = r["answer_value"]
@@ -147,6 +151,8 @@ def save() -> None:
     s = st.session_state
     _, rows = load_questions(QUESTIONS)
     unit = {NO_UNIT: "", OTHER_UNIT: s.f_unit_other.strip()}.get(s.f_unit, s.f_unit)
+    # Saving a Claude-written question from this app means a person has checked it.
+    reviewed = "human" if s.meta["author"] == "claude" else s.meta["reviewed"]
     row = {
         "qid": s.editing or next_qid(rows),
         "question": s.f_question.strip(),
@@ -157,6 +163,8 @@ def save() -> None:
         "answer_unit": unit,
         "q_type": s.f_q_type or "",
         "evidence": s.f_evidence or "",
+        "author": s.meta["author"],
+        "reviewed": reviewed,
         "notes": s.f_notes.strip(),
     }
     errors = validate_row(row, set(pages))
@@ -223,7 +231,12 @@ with left:
 
 with right:
     st.selectbox("編集する質問", [NEW] + [r["qid"] for r in rows], key="edit_select", on_change=load_into_form)
-    st.markdown(f"**qid：** {s.editing or next_qid(rows) + '（保存時に付きます）'}")
+    st.markdown(
+        f"**qid：** {s.editing or next_qid(rows) + '（保存時に付きます）'}　"
+        f"**作成者：** {AUTHOR_LABELS[s.meta['author']]}　**確認：** {REVIEWED_LABELS[s.meta['reviewed']]}"
+    )
+    if s.meta["author"] == "claude":
+        st.info("Claude が作った問題です。画像と照らし合わせて保存すると「人が確認」になります。")
 
     st.text_area("質問（スライドの見出しをそのまま写さない）", key="f_question", height=100)
 

@@ -22,7 +22,7 @@ uv run streamlit run scripts/eval_editor.py
 - 1行目は次のヘッダーにする。
 
 ```
-qid,question,gold_pages,gold_mode,answer,answer_value,answer_unit,q_type,evidence,notes
+qid,question,gold_pages,gold_mode,answer,answer_value,answer_unit,q_type,evidence,author,reviewed,notes
 ```
 
 ## 列
@@ -38,9 +38,18 @@ qid,question,gold_pages,gold_mode,answer,answer_value,answer_unit,q_type,evidenc
 | `answer_unit` | `answer_value` があるとき | 資料の表記どおり：`億円`、`百万円`、`千台`、`%`、`pt` など |
 | `q_type` | ○ | 何を聞くか：`lookup`（1つの値を読む）／`compare`（2つ以上の値の比較・差・比率）／`trend`（推移・傾向）／`structure`（図の構造：パイプラインの段階、内訳の関係など） |
 | `evidence` | ○ | 答えがどこにあるか：`chart`（グラフ）／`table`（表）／`diagram`（図）／`text`（本文の文字） |
-| `notes` | | 迷った点や、解釈の余地がある点のメモ |
+| `author` | ○ | 問題を作ったのは誰か：`human`（人）／`claude`（Claude） |
+| `reviewed` | ○ | 誰が画像と照らし合わせて確認したか：`none`（未確認）／`ai`（AI が確認）／`human`（人が確認） |
+| `notes` | | 迷った点や、解釈の余地がある点のメモ。定型の質問には `#定型` を付ける |
 
 業界・企業・資料をまたぐかどうか・答えがテキスト層にあるかどうかは、`gold_pages` と `data/pages.jsonl` から自動で求めるので書かない。
+
+## 作成と確認の方針
+
+- 最初の9問（q002〜q009）は開発者が作った。残りは開発者の判断で Claude が作る（`author=claude`）。
+- Claude が作った問題は、作成とは別の AI（前提知識を持たない確認役）がページ画像と照らし合わせて検証し、通ったものを `reviewed=ai` にする。
+- **実験で回答を生成する AI には Claude を使わない。** 問題を作った AI が自分で解く構造を避けるため。
+- 結果は `author` 別にも集計し、人が作った問題と AI が作った問題で方式の順位が変わらないかを確かめる。
 
 ## 採点のルール
 

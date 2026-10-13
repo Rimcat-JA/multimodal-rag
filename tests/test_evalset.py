@@ -21,6 +21,8 @@ def row(**overrides):
         "answer_unit": "%",
         "q_type": "lookup",
         "evidence": "chart",
+        "author": "human",
+        "reviewed": "none",
         "notes": "",
     }
     return base | overrides
@@ -47,6 +49,13 @@ def test_duplicate_qid_and_bad_code():
     errors = validate([row(), row(evidence="graph")], HEADER, PAGES)
     assert any("重複" in e for e in errors)
     assert any("graph" in e for e in errors)
+
+
+def test_author_and_reviewed_must_use_known_codes():
+    assert validate([row(author="claude", reviewed="ai")], HEADER, PAGES) == []
+    assert any("gpt" in e for e in validate([row(author="gpt")], HEADER, PAGES))
+    assert any("yes" in e for e in validate([row(reviewed="yes")], HEADER, PAGES))
+    assert any("作成者" in e for e in validate([row(author="")], HEADER, PAGES))
 
 
 def test_number_formatting_rules():

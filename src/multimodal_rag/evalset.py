@@ -12,9 +12,9 @@ from pathlib import Path
 
 HEADER = [
     "qid", "question", "gold_pages", "gold_mode", "answer",
-    "answer_value", "answer_unit", "q_type", "evidence", "notes",
+    "answer_value", "answer_unit", "q_type", "evidence", "author", "reviewed", "notes",
 ]
-REQUIRED = ["qid", "question", "gold_pages", "gold_mode", "answer", "q_type", "evidence"]
+REQUIRED = ["qid", "question", "gold_pages", "gold_mode", "answer", "q_type", "evidence", "author", "reviewed"]
 
 # Codes stored in the CSV -> labels shown to the person filling it in.
 GOLD_MODE_LABELS = {
@@ -33,6 +33,9 @@ EVIDENCE_LABELS = {
     "diagram": "図",
     "text": "本文の文字",
 }
+# Who wrote the question, and who has checked it against the page images.
+AUTHOR_LABELS = {"human": "人", "claude": "Claude"}
+REVIEWED_LABELS = {"none": "未確認", "ai": "AIが確認", "human": "人が確認"}
 COMMON_UNITS = ["億円", "百万円", "兆円", "千台", "%", "pt", "円", "件", "人"]
 
 QID_RE = re.compile(r"^q\d{3,}$")
@@ -92,6 +95,7 @@ def validate_row(row: dict, page_ids: set[str]) -> list[str]:
     labels = {
         "qid": "qid", "question": "質問", "gold_pages": "根拠ページ", "gold_mode": "根拠ページの扱い",
         "answer": "正解（文）", "q_type": "聞き方", "evidence": "根拠の種類",
+        "author": "作成者", "reviewed": "確認",
     }
     for col in REQUIRED:
         if not (row.get(col) or "").strip():
@@ -101,7 +105,10 @@ def validate_row(row: dict, page_ids: set[str]) -> list[str]:
     if qid and not QID_RE.match(qid):
         errors.append(f"qid「{qid}」は q001 の形にしてください")
 
-    for col, allowed in (("gold_mode", GOLD_MODE_LABELS), ("q_type", Q_TYPE_LABELS), ("evidence", EVIDENCE_LABELS)):
+    for col, allowed in (
+        ("gold_mode", GOLD_MODE_LABELS), ("q_type", Q_TYPE_LABELS), ("evidence", EVIDENCE_LABELS),
+        ("author", AUTHOR_LABELS), ("reviewed", REVIEWED_LABELS),
+    ):
         value = (row.get(col) or "").strip()
         if value and value not in allowed:
             errors.append(f"{col}「{value}」は {sorted(allowed)} のどれかにしてください")

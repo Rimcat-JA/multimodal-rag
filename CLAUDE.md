@@ -9,7 +9,7 @@
 - **A. テキストのみ**：PyMuPDF でテキストを抽出 → BGE-M3 で埋め込み（基準）
 - **B. 図表キャプション**：ページ画像を丸ごと画像対応 LLM に渡し、ページ内の図表ごとに説明文と Markdown 表を出させて埋め込む（B1: Claude API／B2: ローカルの Qwen2.5-VL）。図表の切り出しはしない（README の Design decisions を参照）
 - **C. ページ画像検索**：ColQwen2.5／ColPali の複数ベクトル埋め込み ＋ Late Interaction（MaxSim）
-- 回答生成：どの方式でも、検索で見つかったページ画像と質問を Claude に渡して回答させる
+- 回答生成：どの方式でも、検索で見つかったページ画像と質問を画像対応 LLM に渡して回答させる。**評価セットの問題を Claude が作っているので、回答生成には Claude を使わない**（モデルは別途決める）
 
 開発者は ML エンジニア／データサイエンティストを目指して学習中。**開発者がすべてのコードを説明できる状態**を保つことが、速さより優先される。
 
@@ -45,7 +45,11 @@ Claude Code の PowerShell では PATH が古いことがあるので、コマ�
 
 実験の結論はここで決まる。バグや、AI が AI を採点する構造が入り込むと、すべての結果が無意味になる。
 
-- `eval/questions.csv` … 評価セット（質問・正解ページ・正解）。**開発者が入力アプリ（`scripts/eval_editor.py`）で作る。Claude は質問や正解を作らない・直さない。** 形式の確認や、誤記の指摘はしてよい。入力アプリと `src/multimodal_rag/evalset.py` は書式の変換と検証だけを行い、中身を変えない。
+- `eval/questions.csv` … 評価セット（質問・正解ページ・正解）。開発者の判断（2026-10-13）で、q010 以降は Claude が作る。そのときのルール：
+  - Claude が作った問題は `author=claude`、`reviewed=none` で追加する。作成とは別の AI（文脈を持たないサブエージェント）がページ画像で検証し、通ったものだけ `reviewed=ai` にする。自分で作った問題を自分で `reviewed=ai` にしない。
+  - 根拠ページは、`data/pages.jsonl` で同じ値を検索し、漏れなく登録する。
+  - 開発者が作った問題（`author=human`）を直すときは、メモ欄に「AIが修正」と理由を書く。
+  - 入力アプリと `src/multimodal_rag/evalset.py` は書式の変換と検証だけを行い、中身を変えない。
 - `src/multimodal_rag/eval/metrics.py` … Recall@k、MRR、MaxSim など。**最初の実装は開発者が書く。** Claude はレビューやテストケースの提案をしてよいが、勝手に書き換えない。
 - `tests/test_metrics.py` … 上の指標のテスト。手計算で答えが分かる小さな例で書く。
 
