@@ -25,6 +25,8 @@
 ```powershell
 uv run python scripts/check_gpu.py   # GPU の確認（"OK" が出ること）
 uv run pytest                        # テスト
+uv run streamlit run scripts/eval_editor.py   # 評価セットの入力アプリ
+uv run python scripts/validate_eval.py        # 評価セットの形式チェック
 uv add <pkg>                         # 依存関係の追加（pip install は使わない）
 uv add --dev <pkg>                   # 開発用の依存関係
 ```
@@ -43,7 +45,7 @@ Claude Code の PowerShell では PATH が古いことがあるので、コマ�
 
 実験の結論はここで決まる。バグや、AI が AI を採点する構造が入り込むと、すべての結果が無意味になる。
 
-- `eval/questions.csv` … 評価セット（質問・正解ページ・正解）。**開発者が手で作る。Claude は質問や正解を作らない・直さない。** 形式の確認や、誤記の指摘はしてよい。
+- `eval/questions.csv` … 評価セット（質問・正解ページ・正解）。**開発者が入力アプリ（`scripts/eval_editor.py`）で作る。Claude は質問や正解を作らない・直さない。** 形式の確認や、誤記の指摘はしてよい。入力アプリと `src/multimodal_rag/evalset.py` は書式の変換と検証だけを行い、中身を変えない。
 - `src/multimodal_rag/eval/metrics.py` … Recall@k、MRR、MaxSim など。**最初の実装は開発者が書く。** Claude はレビューやテストケースの提案をしてよいが、勝手に書き換えない。
 - `tests/test_metrics.py` … 上の指標のテスト。手計算で答えが分かる小さな例で書く。
 
