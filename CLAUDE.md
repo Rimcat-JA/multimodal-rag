@@ -50,7 +50,11 @@ Claude Code の PowerShell では PATH が古いことがあるので、コマ�
   - 根拠ページは、`data/pages.jsonl` で同じ値を検索し、漏れなく登録する。
   - 開発者が作った問題（`author=human`）を直すときは、メモ欄に「AIが修正」と理由を書く。
   - 入力アプリと `src/multimodal_rag/evalset.py` は書式の変換と検証だけを行い、中身を変えない。
-- `src/multimodal_rag/eval/metrics.py` … Recall@k、MRR、MaxSim など。**最初の実装は開発者が書く。** Claude はレビューやテストケースの提案をしてよいが、勝手に書き換えない。
+- `src/multimodal_rag/eval/metrics.py` … Recall@k、MRR など。開発者の判断（2026-10-26）で Claude が実装する。そのときのルール：
+  - 指標の定義（何を正解とみなすか、順位の数え方）は開発者が決める。定義は docstring に書く。
+  - 実装より先に `tests/test_metrics.py` を書く。期待値は手計算で求め、計算の過程をコメントに残す。
+  - 実装後、文脈を持たない別の AI（サブエージェント）に、定義どおりに動くかを検証させる。
+  - 一度確定したら、開発者の明示的な指示なしに書き換えない。
 - `tests/test_metrics.py` … 上の指標のテスト。手計算で答えが分かる小さな例で書く。
 
 保護されたファイルに問題を見つけたら、直さずに報告する。
