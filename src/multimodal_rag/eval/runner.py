@@ -7,7 +7,9 @@ out of order) raises instead of being scored, because a silently wrong ranking
 would make the method comparison meaningless.
 """
 
+import csv
 import hashlib
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,6 +18,8 @@ from multimodal_rag.evalset import parse_gold
 from multimodal_rag.retrieval.base import PageHit, Retriever
 
 REPORTED_KS = (1, 3, 5)
+# How many retrieved pages per question to keep in per_question.csv.
+SAVED_TOP = 10
 
 
 @dataclass
@@ -79,3 +83,27 @@ def summarize_by(results: list[QuestionResult], questions: list[dict], column: s
     for r in results:
         groups.setdefault(value_of[r.qid], []).append(r)
     return {value: summarize(rs, ks) for value, rs in sorted(groups.items())}
+
+
+def save_run(out_dir: Path, meta: dict, results: list[QuestionResult], questions: list[dict]) -> dict:
+    """Write run.json (settings + scores) and per_question.csv to a new directory.
+
+    `meta` holds everything needed to reproduce the run: config, model ids,
+    hashes of the evaluation set and pages, git commit. Refuses to overwrite an
+    existing run so earlier results are never lost.
+    """
+    out_dir.mkdir(parents=True, exist_ok=False)
+    run = meta | {
+        "summary": summarize(results),
+        "by_author": summarize_by(results, questions, "author"),
+        "by_evidence": summarize_by(results, questions, "evidence"),
+    }
+    with (out_dir / "run.json").open("w", encoding="utf-8") as f:
+        json.dump(run, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    with (out_dir / "per_question.csv").open("w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(["qid", "rank", f"top{SAVED_TOP}"])
+        for r in results:
+            writer.writerow([r.qid, "" if r.rank is None else r.rank, ";".join(r.retrieved[:SAVED_TOP])])
+    return run

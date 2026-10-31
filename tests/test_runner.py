@@ -1,6 +1,8 @@
+import json
+
 import pytest
 
-from multimodal_rag.eval.runner import check_hits, file_sha256, run_retrieval, summarize, summarize_by
+from multimodal_rag.eval.runner import check_hits, file_sha256, run_retrieval, save_run, summarize, summarize_by
 from multimodal_rag.retrieval.base import PageHit
 
 PAGES = {"a", "b", "c", "d", "e"}
@@ -22,9 +24,9 @@ class FakeRetriever:
 
 
 QUESTIONS = [
-    {"qid": "q001", "question": "Q1", "gold_pages": "a", "author": "human"},
-    {"qid": "q002", "question": "Q2", "gold_pages": "a|b;c", "author": "claude"},
-    {"qid": "q003", "question": "Q3", "gold_pages": "e", "author": "claude"},
+    {"qid": "q001", "question": "Q1", "gold_pages": "a", "author": "human", "evidence": "chart"},
+    {"qid": "q002", "question": "Q2", "gold_pages": "a|b;c", "author": "claude", "evidence": "table"},
+    {"qid": "q003", "question": "Q3", "gold_pages": "e", "author": "claude", "evidence": "chart"},
 ]
 RANKINGS = {
     "Q1": ["a", "b", "c", "d", "e"],  # gold "a" at rank 1                      -> rank 1
@@ -100,3 +102,19 @@ def test_file_sha256_changes_with_content(tmp_path):
     f.write_bytes(b"qid\nq002\n")
     assert file_sha256(f) != before
     assert len(before) == 64
+
+
+def test_save_run_writes_scores_and_refuses_overwrite(tmp_path):
+    out = tmp_path / "run1"
+    returned = save_run(out, {"method": "fake"}, run(), QUESTIONS)
+    saved = json.loads((out / "run.json").read_text(encoding="utf-8"))
+    assert saved == returned
+    assert saved["method"] == "fake"
+    assert saved["summary"]["mrr"] == pytest.approx(1.25 / 3)
+    assert set(saved["by_author"]) == {"human", "claude"}
+    lines = (out / "per_question.csv").read_text(encoding="utf-8").splitlines()
+    assert lines[0] == "qid,rank,top10"
+    assert lines[2] == "q002,4,d;b;e;c;a"
+    assert lines[3] == "q003,,a;b;c;d"  # never answerable -> empty rank
+    with pytest.raises(FileExistsError):
+        save_run(out, {"method": "fake"}, run(), QUESTIONS)
