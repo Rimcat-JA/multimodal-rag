@@ -9,7 +9,8 @@
 - **A. テキストのみ**：PyMuPDF でテキストを抽出 → BGE-M3 で埋め込み（基準）
 - **B. 図表キャプション**：ページ画像を丸ごと画像対応 LLM に渡し、ページ内の図表ごとに説明文と Markdown 表を出させて埋め込む（B1: Claude API／B2: ローカルの Qwen2.5-VL）。図表の切り出しはしない（README の Design decisions を参照）
 - **C. ページ画像検索**：ColQwen2.5／ColPali の複数ベクトル埋め込み ＋ Late Interaction（MaxSim）
-- 回答生成：どの方式でも、検索で見つかったページ画像と質問を画像対応 LLM に渡して回答させる。**評価セットの問題を Claude が作っているので、回答生成には Claude を使わない**（モデルは別途決める）
+- 回答生成：どの方式でも、検索で見つかったページ画像と質問を画像対応 LLM に渡して回答させる。**評価セットの問題を Claude が作っているので、回答生成には Claude を使わない**。回答生成は **Gemini の API**（2026-10-31 決定）。エージェント型のツール（Codex など）は、リポジトリ内の正解を読めてしまうので回答生成に使わない
+- 採点：検索は Recall@1・3・5 と MRR。回答は、数値の質問を自動判定し、文章の質問は **DeepSeek V4.1 Flash の API** が採点する。問題を作る（Claude）・答える（Gemini）・採点する（DeepSeek）を別々のモデルにして、自分の答えを自分で採点する偏りを避けるため（詳細は `eval/README.md`）
 
 開発者は ML エンジニア／データサイエンティストを目指して学習中。**開発者がすべてのコードを説明できる状態**を保つことが、速さより優先される。
 
@@ -65,7 +66,7 @@ Claude Code の PowerShell では PATH が古いことがあるので、コマ�
 src/multimodal_rag/
   ingest/       PDF → ページ画像・テキスト（data/pages.jsonl）
   retrieval/    方式 A / B1 / B2 / C（共通のインターフェースで実装）
-  generation/   回答生成（Claude）
+  generation/   回答生成（Gemini）と、文章の答えの採点（DeepSeek）
   eval/         指標と評価の実行（metrics.py は保護）
 scripts/        実行用のスクリプト（各方式のインデックス作成・評価の実行など）
 tests/          pytest
@@ -88,7 +89,8 @@ outputs/        キャッシュや途中生成物（.gitignore 済み）
 
 ## Claude API とコスト
 
-- API キーは `.env` の `ANTHROPIC_API_KEY` から読む。キーを表示・ログ出力・コミットしない。
+- API キーは `.env` から読む（Claude は `ANTHROPIC_API_KEY`、Gemini は `GEMINI_API_KEY`、DeepSeek は `DEEPSEEK_API_KEY`）。キーを表示・ログ出力・コミットしない。この節の費用のルールは Gemini と DeepSeek にも当てはめる。
+- モデル ID は、予告なく中身が差し替わる呼び名（例：`deepseek-flash`）より、日付つきの固定版を優先する。使った ID は結果と一緒に保存する。
 - モデル名はコードに直接書かず、設定から渡す。
 - **API を50回以上呼ぶ処理は、実行前に呼び出し回数と費用の見積もりを示し、開発者の了承を得る。** まず数件で試してから全件を回す。
 
