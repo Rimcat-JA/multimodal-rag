@@ -1,0 +1,12 @@
+# Method A: page text layer + BGE-M3 dense embeddings.
+# Fixed before the first evaluation run (2026-10-31). If any value changes
+# after results have been seen, note it in README.
+
+method = "A"
+model = "BAAI/bge-m3"
+# Hugging Face commit of BAAI/bge-m3, so the weights can't change under us.
+revision = "5617a9f61b028005a4858fdac845db406aefb181"
+torch_dtype = "float16"
+# The model's limit. One vector per page; longer pages are truncated.
+max_seq_length = 8192
+batch_size = 4
