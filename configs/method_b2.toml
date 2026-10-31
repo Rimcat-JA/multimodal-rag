@@ -1,0 +1,42 @@
+# Method B2: a local vision LLM (Qwen2.5-VL via Ollama) describes every chart,
+# table and diagram on each whole page image; each description is embedded with
+# BGE-M3 (same settings as method A) and a page scores as its best figure.
+# Pages without figures get no description and are never retrieved.
+# Fixed before the first evaluation run (2026-11-01). If any value changes
+# after results have been seen, note it in README.
+
+method = "B2"
+
+[caption]
+ollama_url = "http://127.0.0.1:11434"
+model = "qwen2.5vl:7b"
+# Ollama model digest, checked before running so a re-pulled model can't slip in.
+model_digest = "5ced39dfa4ba"
+temperature = 0
+seed = 0
+num_ctx = 8192
+num_predict = 4096
+prompt = """
+この画像は、日本企業の決算説明資料の1ページです。ページの中にあるグラフ・表・図を、1つずつ書き出してください。
+
+規則：
+- 画像に書かれている内容だけを書く。画像にない数値や項目を作らない。
+- 表紙、目次、章の区切り（見出しだけのページ）、注意事項、文章だけのページなど、グラフ・表・図がないページは "figures" を空の配列 [] にする。
+- 背景の模様、装飾の線、ロゴ、写真はグラフ・表・図ではない。
+- ページの見出しや注記も手がかりにして、図表が何を示しているかを書く。
+
+各図表の項目：
+- type: "chart"（グラフ）、"table"（表）、"diagram"（図・流れ図・体制図など）のどれか
+- title: 図表の見出し。図表に見出しがなければページの見出し
+- unit: 図表に書かれた単位（例：億円、百万円、%）。書かれていなければ空の文字列
+- table_markdown: 図表の項目と数値を Markdown の表にしたもの。1行ごとに改行し、数値は表示どおりに写す。数値のない図は空の文字列
+- summary: 図表が示していることを日本語で2〜3文
+"""
+
+[embed]
+# Same text encoder as method A, so A and B2 differ only in what text is embedded.
+model = "BAAI/bge-m3"
+revision = "5617a9f61b028005a4858fdac845db406aefb181"
+torch_dtype = "float16"
+max_seq_length = 8192
+batch_size = 4

@@ -1,6 +1,7 @@
 """Evaluate one retrieval method on the evaluation set.
 
 Run with:  uv run python scripts/run_eval.py --config configs/method_a.toml
+           uv run python scripts/run_eval.py --config configs/method_b2.toml  (after scripts/make_captions.py)
            uv run python scripts/run_eval.py --config configs/method_c.toml
 
 Every page is ranked for every question (search depth = number of pages), so
@@ -28,11 +29,9 @@ QUESTIONS = ROOT / "eval" / "questions.csv"
 
 # Settings that change the index (and so belong in the cache key) per method.
 # Batch sizes and chunking only change speed and memory, not the vectors.
-INDEX_SETTINGS = {
-    "A": ("model", "revision", "torch_dtype", "max_seq_length"),
-    "C": ("model", "revision", "torch_dtype"),
-}
-INDEX_SUFFIX = {"A": ".npz", "C": ".pt"}
+TEXT_EMBED_SETTINGS = ("model", "revision", "torch_dtype", "max_seq_length")
+INDEX_SUFFIX = {"A": ".npz", "B2": ".npz", "C": ".pt"}
+CAPTIONS_DIR = ROOT / "outputs" / "cache" / "captions_b2"
 
 
 def git_state() -> dict:
@@ -44,8 +43,21 @@ def git_state() -> dict:
     return {"commit": commit, "dirty": bool(dirty.strip())}
 
 
+def index_settings(config: dict) -> dict:
+    method = config["method"]
+    if method == "A":
+        return {k: config[k] for k in TEXT_EMBED_SETTINGS}
+    if method == "B2":
+        from multimodal_rag.ingest.captions import settings_key
+
+        return {k: config["embed"][k] for k in TEXT_EMBED_SETTINGS} | {"captions": settings_key(config["caption"])}
+    if method == "C":
+        return {k: config[k] for k in ("model", "revision", "torch_dtype")}
+    raise ValueError(f"unknown method {method!r}")
+
+
 def cache_key(config: dict, pages_sha: str) -> str:
-    fields = {k: config[k] for k in INDEX_SETTINGS[config["method"]]}
+    fields = index_settings(config)
     return hashlib.sha256(json.dumps([fields, pages_sha], sort_keys=True).encode()).hexdigest()[:16]
 
 
@@ -61,6 +73,35 @@ def build_retriever(config: dict, pages: list[dict]) -> tuple[object, dict]:
         print(f"{len(pages)} pages, max {max(token_counts)} tokens, {len(truncated)} truncated")
         notes = {"truncation": {"max_tokens": max(token_counts), "n_truncated": len(truncated), "truncated": truncated}}
         return TextDenseRetriever(encoder, batch_size=config["batch_size"]), notes
+    if method == "B2":
+        from multimodal_rag.ingest.captions import cache_path, figure_text, settings_key
+        from multimodal_rag.retrieval.caption_dense import CaptionDenseRetriever
+        from multimodal_rag.retrieval.text_dense import load_encoder
+
+        caption_dir = CAPTIONS_DIR / settings_key(config["caption"])
+        records = {}
+        for p in pages:
+            path = cache_path(caption_dir, p["page_id"])
+            if not path.exists():
+                raise FileNotFoundError(f"{p['page_id']} has no caption in {caption_dir}; run scripts/make_captions.py")
+            records[p["page_id"]] = json.loads(path.read_text(encoding="utf-8"))
+        for p in pages:
+            # Attach one text per figure; CaptionDenseRetriever.index reads p["captions"].
+            p["captions"] = [figure_text(fig) for fig in records[p["page_id"]]["figures"]]
+        encoder = load_encoder(config["embed"])
+        n_figures = [len(r["figures"]) for r in records.values()]
+        token_counts = [len(encoder.tokenizer(t)["input_ids"]) for p in pages for t in p["captions"]]
+        notes = {"captions": {
+            "cache": caption_dir.relative_to(ROOT).as_posix(),
+            "n_figures": sum(n_figures),
+            "n_pages_with_figures": sum(n > 0 for n in n_figures),
+            "n_unparseable": sum(r["error"] is not None for r in records.values()),
+            "n_stopped_at_length": sum(r["done_reason"] == "length" for r in records.values()),
+            "max_tokens": max(token_counts),
+            "n_truncated": sum(n > config["embed"]["max_seq_length"] for n in token_counts),
+        }}
+        print(json.dumps(notes["captions"]))
+        return CaptionDenseRetriever(encoder, batch_size=config["embed"]["batch_size"]), notes
     if method == "C":
         from multimodal_rag.retrieval.page_image import PageImageRetriever, load_encoder
 
