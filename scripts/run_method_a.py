@@ -33,7 +33,10 @@ RESULTS_DIR = ROOT / "results" / "method_a"
 
 def git_state() -> dict:
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
-    dirty = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True).stdout
+    # Uncommitted results from earlier runs are not code changes, so leave results/ out.
+    dirty = subprocess.run(
+        ["git", "status", "--porcelain", "--", ".", ":!results"], cwd=ROOT, capture_output=True, text=True,
+    ).stdout
     return {"commit": commit, "dirty": bool(dirty.strip())}
 
 
