@@ -1,0 +1,87 @@
+{
+  "method": "C",
+  "config": {
+    "method": "C",
+    "model": "vidore/colqwen2.5-v0.2",
+    "revision": "dcbe8d9cede518bce830488364ba0e40c873645b",
+    "torch_dtype": "bfloat16",
+    "batch_size": 2,
+    "chunk_pages": 16
+  },
+  "search_depth": 1429,
+  "timestamp": "2026-10-31T23:41:17",
+  "eval_set": {
+    "path": "eval/questions.csv",
+    "sha256": "f18c5ee9a4268ec7848ac8da7ca67a34f09e674e5029ac2451dae5768551840f",
+    "n": 40
+  },
+  "pages": {
+    "path": "data/pages.jsonl",
+    "sha256": "6fb6ef5446e192917e968b8b2f0d5453aae5012a048f7205f8059b27bf22ffc2",
+    "n": 1429
+  },
+  "git": {
+    "commit": "f4d0d7ba879ea0c78963d0b636cc2c358e56a1a8",
+    "dirty": false
+  },
+  "versions": {
+    "torch": "2.14.0+rocm10.1.0",
+    "sentence-transformers": "6.2.0",
+    "transformers": "5.22.1",
+    "peft": "0.21.2",
+    "python": "3.12.10"
+  },
+  "summary": {
+    "n": 40,
+    "recall@1": 0.575,
+    "recall@3": 0.725,
+    "recall@5": 0.775,
+    "mrr": 0.6795124036900353
+  },
+  "by_author": {
+    "claude": {
+      "n": 32,
+      "recall@1": 0.5,
+      "recall@3": 0.65625,
+      "recall@5": 0.71875,
+      "mrr": 0.615015504612544
+    },
+    "human": {
+      "n": 8,
+      "recall@1": 0.875,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "mrr": 0.9375
+    }
+  },
+  "by_evidence": {
+    "chart": {
+      "n": 16,
+      "recall@1": 0.5,
+      "recall@3": 0.75,
+      "recall@5": 0.8125,
+      "mrr": 0.6529401998151998
+    },
+    "diagram": {
+      "n": 6,
+      "recall@1": 0.5,
+      "recall@3": 0.5,
+      "recall@5": 0.5,
+      "mrr": 0.5386904761904762
+    },
+    "table": {
+      "n": 12,
+      "recall@1": 0.6666666666666666,
+      "recall@3": 0.75,
+      "recall@5": 0.8333333333333334,
+      "mrr": 0.7382044125465179
+    },
+    "text": {
+      "n": 6,
+      "recall@1": 0.6666666666666666,
+      "recall@3": 0.8333333333333334,
+      "recall@5": 0.8333333333333334,
+      "mrr": 0.7738095238095237
+    }
+  }
+}
