@@ -12,6 +12,9 @@ wheels/
 # Secrets (API keys)
 .env
 
+# Machine-specific Claude Code settings (contain local paths)
+.claude/settings.local.json
+
 # Source documents and generated artifacts (IR PDFs are copyrighted; keep them local)
 data/
 outputs/

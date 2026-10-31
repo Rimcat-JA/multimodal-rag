@@ -22,9 +22,10 @@ build-backend = "uv_build"
 [tool.uv]
 # Only Windows is set up for ROCm here; don't try to resolve for other platforms.
 environments = ["sys_platform == 'win32' and platform_machine == 'AMD64'"]
-# Use the system Python (installed via winget) and keep the package cache outside
-# AppData. Processes launched from packaged apps get AppData writes redirected,
-# which hides uv-managed interpreters from normal terminals.
+# Use the system Python (installed via winget). Processes launched from packaged
+# apps get AppData writes redirected, which hides uv-managed interpreters from
+# normal terminals. Such sessions also point UV_CACHE_DIR outside AppData via
+# .claude/settings.local.json (machine-specific, not committed).
 python-preference = "only-system"
 # AMD's Windows torch wheel doesn't need triton, but the lock resolver reads the
 # Linux wheel's metadata (which pins a Linux-only triton) and fails. Drop it.
