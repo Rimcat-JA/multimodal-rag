@@ -1,0 +1,16 @@
+# Method C: page images + ColQwen2.5 multi-vector embeddings, scored with MaxSim.
+# Fixed before the first evaluation run (2026-10-31). If any value changes
+# after results have been seen, note it in README.
+
+method = "C"
+model = "vidore/colqwen2.5-v0.2"
+# Hugging Face commit of vidore/colqwen2.5-v0.2, so the weights can't change under us.
+revision = "dcbe8d9cede518bce830488364ba0e40c873645b"
+# The model was trained in bfloat16 (model card).
+torch_dtype = "bfloat16"
+# Images go in as rendered (data/pages, 150 dpi); the checkpoint's processor
+# caps each page at 768 image patches. Token masking also uses the checkpoint's
+# defaults (all page tokens are scored).
+batch_size = 2
+# Page images opened at a time while indexing (RAM, not results).
+chunk_pages = 16

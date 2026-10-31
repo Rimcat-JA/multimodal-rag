@@ -2,17 +2,18 @@
 
 One vector per page (no chunking), so the retrieval unit is the same as in
 method C. Pages longer than the model's max_seq_length are truncated by the
-encoder; scripts/run_method_a.py reports how many.
+encoder; scripts/run_eval.py reports how many.
 
 The encoder is passed in rather than created here, so the ranking logic can be
 tested with a small fake encoder and no model download.
 """
 
+from pathlib import Path
 from typing import Protocol
 
 import numpy as np
 
-from multimodal_rag.retrieval.base import PageHit
+from multimodal_rag.retrieval.base import PageHit, top_k_hits
 
 
 class TextEncoder(Protocol):
@@ -27,11 +28,8 @@ def rank_by_similarity(page_vectors: np.ndarray, query_vector: np.ndarray, page_
     """Top-k pages by dot product, best first.
 
     Vectors are unit length, so the dot product is the cosine similarity.
-    Ties keep page order (stable sort), so the ranking is reproducible.
     """
-    scores = page_vectors @ query_vector
-    order = np.argsort(-scores, kind="stable")[:k]
-    return [PageHit(page_ids[i], float(scores[i])) for i in order]
+    return top_k_hits(page_vectors @ query_vector, page_ids, k)
 
 
 def load_encoder(config: dict):
@@ -70,12 +68,17 @@ class TextDenseRetriever:
             show_progress_bar=True,
         ).astype(np.float32)
 
-    def load_index(self, page_ids: list[str], page_vectors: np.ndarray) -> None:
-        """Reuse vectors computed earlier (see scripts/run_method_a.py) instead of re-encoding."""
-        if len(page_ids) != len(page_vectors):
-            raise ValueError("page_ids and page_vectors differ in length")
-        self.page_ids = list(page_ids)
-        self.page_vectors = page_vectors.astype(np.float32)
+    def save_index(self, path: Path) -> None:
+        np.savez(path, page_ids=np.array(self.page_ids), vectors=self.page_vectors)
+
+    def load_index(self, path: Path) -> None:
+        """Reuse vectors saved by save_index instead of re-encoding every page."""
+        saved = np.load(path)
+        page_ids, vectors = [str(p) for p in saved["page_ids"]], saved["vectors"]
+        if len(page_ids) != len(vectors):
+            raise ValueError("page_ids and vectors differ in length")
+        self.page_ids = page_ids
+        self.page_vectors = vectors.astype(np.float32)
 
     def search(self, query: str, k: int) -> list[PageHit]:
         if self.page_vectors is None:

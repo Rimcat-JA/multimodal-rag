@@ -9,11 +9,25 @@ before returning, keeping each page's best score.
 from dataclasses import dataclass
 from typing import Protocol
 
+import numpy as np
+
 
 @dataclass(frozen=True)
 class PageHit:
     page_id: str  # same ids as data/pages.jsonl and eval/questions.csv
     score: float  # higher is better; only comparable within one method
+
+
+def top_k_hits(scores: np.ndarray, page_ids: list[str], k: int) -> list[PageHit]:
+    """Top-k pages by score, best first.
+
+    Ties keep page order (stable sort), so every method breaks ties the same
+    way and rankings are reproducible.
+    """
+    if len(scores) != len(page_ids):
+        raise ValueError(f"{len(scores)} scores for {len(page_ids)} pages")
+    order = np.argsort(-scores, kind="stable")[:k]
+    return [PageHit(page_ids[i], float(scores[i])) for i in order]
 
 
 class Retriever(Protocol):

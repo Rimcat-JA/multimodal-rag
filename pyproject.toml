@@ -5,8 +5,9 @@ description = "Multimodal RAG over financial-report charts and tables: comparing
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "peft>=0.21.2",
     "pymupdf>=1.28.2",
-    "sentence-transformers>=6.2.0",
+    "sentence-transformers[image]>=6.2.0",
     "streamlit>=1.65.0",
     # ROCm builds for the Radeon RX 9070 XT (gfx1201), served from AMD's index below.
     "torch[device-gfx1201]==2.14.0+rocm10.1.0",

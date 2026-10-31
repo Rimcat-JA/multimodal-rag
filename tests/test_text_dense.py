@@ -59,6 +59,12 @@ def test_search_before_index_fails():
         TextDenseRetriever(FakeEncoder({})).search("q", k=1)
 
 
-def test_load_index_rejects_mismatched_lengths():
-    with pytest.raises(ValueError):
-        TextDenseRetriever(FakeEncoder({})).load_index(["a", "b"], VECTORS)
+def test_save_and_load_index_round_trip(tmp_path):
+    encoder = FakeEncoder({"text1": [1, 0], "text2": [0, 1], "query": [1, 0]})
+    first = TextDenseRetriever(encoder)
+    first.index([{"page_id": "a", "text": "text1"}, {"page_id": "b", "text": "text2"}])
+    first.save_index(tmp_path / "index.npz")
+    second = TextDenseRetriever(encoder)
+    second.load_index(tmp_path / "index.npz")
+    assert second.page_ids == ["a", "b"]
+    assert second.search("query", k=2) == first.search("query", k=2)

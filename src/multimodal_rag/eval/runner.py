@@ -98,7 +98,7 @@ def save_run(out_dir: Path, meta: dict, results: list[QuestionResult], questions
         "by_author": summarize_by(results, questions, "author"),
         "by_evidence": summarize_by(results, questions, "evidence"),
     }
-    with (out_dir / "run.json").open("w", encoding="utf-8") as f:
+    with (out_dir / "run.json").open("w", encoding="utf-8", newline="\n") as f:
         json.dump(run, f, ensure_ascii=False, indent=2)
         f.write("\n")
     with (out_dir / "per_question.csv").open("w", encoding="utf-8", newline="") as f:
