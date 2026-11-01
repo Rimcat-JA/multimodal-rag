@@ -1,0 +1,116 @@
+{
+  "method": "D",
+  "config": {
+    "method": "D",
+    "rrf_k": 60,
+    "parts": [
+      "configs/method_a.toml",
+      "configs/method_c.toml"
+    ]
+  },
+  "search_depth": 1429,
+  "timestamp": "2026-11-01T16:03:44",
+  "eval_set": {
+    "path": "eval/questions.csv",
+    "sha256": "21ab091666011749dc2d42c24797f7865367f8bd99ac7d22a445026e76d59bbe",
+    "n": 80
+  },
+  "pages": {
+    "path": "data/pages.jsonl",
+    "sha256": "6fb6ef5446e192917e968b8b2f0d5453aae5012a048f7205f8059b27bf22ffc2",
+    "n": 1429
+  },
+  "parts": {
+    "A": {
+      "config": {
+        "method": "A",
+        "model": "BAAI/bge-m3",
+        "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+        "torch_dtype": "float16",
+        "max_seq_length": 8192,
+        "batch_size": 4
+      },
+      "truncation": {
+        "max_tokens": 2007,
+        "n_truncated": 0,
+        "truncated": []
+      },
+      "index_cache": "outputs/cache/method_a/8f5d18b940ed78fc.npz"
+    },
+    "C": {
+      "config": {
+        "method": "C",
+        "model": "vidore/colqwen2.5-v0.2",
+        "revision": "dcbe8d9cede518bce830488364ba0e40c873645b",
+        "torch_dtype": "bfloat16",
+        "batch_size": 2,
+        "chunk_pages": 16
+      },
+      "index_cache": "outputs/cache/method_c/ee137b3d00ff1cde.pt"
+    }
+  },
+  "git": {
+    "commit": "39ae92974af2a28b4538ed61b333ca5f331d5827",
+    "dirty": false
+  },
+  "versions": {
+    "torch": "2.14.0+rocm10.1.0",
+    "sentence-transformers": "6.2.0",
+    "transformers": "5.22.1",
+    "peft": "0.21.2",
+    "python": "3.12.10"
+  },
+  "summary": {
+    "n": 80,
+    "recall@1": 0.5375,
+    "recall@3": 0.7625,
+    "recall@5": 0.8375,
+    "mrr": 0.6609771314023891
+  },
+  "by_author": {
+    "claude": {
+      "n": 72,
+      "recall@1": 0.5555555555555556,
+      "recall@3": 0.7777777777777778,
+      "recall@5": 0.8472222222222222,
+      "mrr": 0.6781690348915435
+    },
+    "human": {
+      "n": 8,
+      "recall@1": 0.375,
+      "recall@3": 0.625,
+      "recall@5": 0.75,
+      "mrr": 0.50625
+    }
+  },
+  "by_evidence": {
+    "chart": {
+      "n": 32,
+      "recall@1": 0.53125,
+      "recall@3": 0.75,
+      "recall@5": 0.84375,
+      "mrr": 0.648071548744068
+    },
+    "diagram": {
+      "n": 12,
+      "recall@1": 0.5,
+      "recall@3": 0.75,
+      "recall@5": 0.8333333333333334,
+      "mrr": 0.6490575396825397
+    },
+    "table": {
+      "n": 24,
+      "recall@1": 0.4583333333333333,
+      "recall@3": 0.7083333333333334,
+      "recall@5": 0.7916666666666666,
+      "mrr": 0.5933366402116401
+    },
+    "text": {
+      "n": 12,
+      "recall@1": 0.75,
+      "recall@3": 0.9166666666666666,
+      "recall@5": 0.9166666666666666,
+      "mrr": 0.8425925925925926
+    }
+  }
+}

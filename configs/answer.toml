@@ -9,10 +9,13 @@ top_k = 5
 # A fourth condition, "gold", gives the gold pages themselves (every page in
 # gold_pages, in order): an upper bound that separates retrieval failures from
 # reading failures.
+# Runs on the 80-question set (2026-11-01). The 40-question runs were
+# A 20261031-230423, B2 20261101-131647, C 20261031-234117.
 [runs]
-A = "results/method_a/20261031-230423"
-B2 = "results/method_b2/20261101-131647"
-C = "results/method_c/20261031-234117"
+A = "results/method_a/20261101-160233"
+B2 = "results/method_b2/20261101-160250"
+C = "results/method_c/20261101-160315"
+D = "results/method_d/20261101-160344"
 
 # Both models are called through OpenRouter, each pinned to its maker's own
 # provider (no fallback to other providers or quantized copies).

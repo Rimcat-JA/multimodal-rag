@@ -1,0 +1,88 @@
+{
+  "method": "C",
+  "config": {
+    "method": "C",
+    "model": "vidore/colqwen2.5-v0.2",
+    "revision": "dcbe8d9cede518bce830488364ba0e40c873645b",
+    "torch_dtype": "bfloat16",
+    "batch_size": 2,
+    "chunk_pages": 16
+  },
+  "search_depth": 1429,
+  "timestamp": "2026-11-01T16:03:15",
+  "eval_set": {
+    "path": "eval/questions.csv",
+    "sha256": "21ab091666011749dc2d42c24797f7865367f8bd99ac7d22a445026e76d59bbe",
+    "n": 80
+  },
+  "pages": {
+    "path": "data/pages.jsonl",
+    "sha256": "6fb6ef5446e192917e968b8b2f0d5453aae5012a048f7205f8059b27bf22ffc2",
+    "n": 1429
+  },
+  "index_cache": "outputs/cache/method_c/ee137b3d00ff1cde.pt",
+  "git": {
+    "commit": "39ae92974af2a28b4538ed61b333ca5f331d5827",
+    "dirty": false
+  },
+  "versions": {
+    "torch": "2.14.0+rocm10.1.0",
+    "sentence-transformers": "6.2.0",
+    "transformers": "5.22.1",
+    "peft": "0.21.2",
+    "python": "3.12.10"
+  },
+  "summary": {
+    "n": 80,
+    "recall@1": 0.625,
+    "recall@3": 0.825,
+    "recall@5": 0.85,
+    "mrr": 0.7373107884083252
+  },
+  "by_author": {
+    "claude": {
+      "n": 72,
+      "recall@1": 0.5972222222222222,
+      "recall@3": 0.8055555555555556,
+      "recall@5": 0.8333333333333334,
+      "mrr": 0.7150675426759168
+    },
+    "human": {
+      "n": 8,
+      "recall@1": 0.875,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "mrr": 0.9375
+    }
+  },
+  "by_evidence": {
+    "chart": {
+      "n": 32,
+      "recall@1": 0.59375,
+      "recall@3": 0.8125,
+      "recall@5": 0.84375,
+      "mrr": 0.7179260107603131
+    },
+    "diagram": {
+      "n": 12,
+      "recall@1": 0.5,
+      "recall@3": 0.75,
+      "recall@5": 0.75,
+      "mrr": 0.644345238095238
+    },
+    "table": {
+      "n": 24,
+      "recall@1": 0.6666666666666666,
+      "recall@3": 0.8333333333333334,
+      "recall@5": 0.875,
+      "mrr": 0.7626207247917773
+    },
+    "text": {
+      "n": 12,
+      "recall@1": 0.75,
+      "recall@3": 0.9166666666666666,
+      "recall@5": 0.9166666666666666,
+      "mrr": 0.8313492063492062
+    }
+  }
+}
