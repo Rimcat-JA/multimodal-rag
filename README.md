@@ -1,96 +1,158 @@
 # multimodal-rag
 
-Multimodal RAG over financial-report charts and tables. The goal is to compare three retrieval approaches on a hand-built evaluation set:
+[日本語版](README.ja.md)
 
-- **A. Text only**: PyMuPDF text extraction + text embeddings (baseline)
-- **B. Figure captioning**: a vision LLM reads each whole page image and returns one structured description per chart or table (type, title, unit, Markdown table, summary), which is then embedded. B2 uses a local Qwen2.5-VL. B1 (the same with the Claude API) was planned but dropped by the developer's decision, so only B2 was run.
-- **C. Page-image retrieval**: ColQwen2.5 multi-vector embeddings with late interaction (MaxSim)
+Which retrieval method works best for questions about the charts and tables in Japanese earnings presentations? This repository compares four methods on a self-built, reviewed set of 80 questions over 1,429 slide pages. It reports retrieval quality, answer accuracy and uncertainty intervals for each.
 
-> Status: retrieval and answer generation for A, B2 and C are evaluated (below). The LLM grading was checked by the developer (32/32 agreement). Data: 15 companies across 5 industries, 30 decks, 1,429 pages. Sources are listed in [docs/sources.csv](docs/sources.csv). The PDFs themselves are not redistributed.
+**Findings**
+
+- **Searching page images beats searching page text.** ColQwen2.5 (C) finds a page with the evidence in the top 5 for 85% of questions, against 66% for text embeddings (A). Answer accuracy rises from 0.625 to 0.775 (+0.150, 95% interval [+0.037, +0.263]).
+- **Asking a local VLM to caption every figure first (B2) did not help**, and it cost 5.2 GPU hours to index. About 9% of pages got no usable caption because the model looped.
+- **Fusing text and image rankings (D) was worse than images alone** on MRR (−0.076 [−0.151, −0.005]). The weaker text ranking pulled down pages that C had ranked first. This was not what I predicted before running it.
+- **Retrieval, not reading, limits the answers.** When the top 5 pages contain the evidence, Gemini answers about 91–96% correctly with any method. With the gold pages given directly it reaches 0.925.
+
+```mermaid
+flowchart LR
+    pdf["30 IR decks<br/>(PDF)"] --> pages["1,429 pages<br/>image + text layer"]
+    pages --> A["A: text<br/>BGE-M3"]
+    pages --> B2["B2: figure captions<br/>Qwen2.5-VL → BGE-M3"]
+    pages --> C["C: page image<br/>ColQwen2.5 + MaxSim"]
+    A --> D["D: RRF of A and C"]
+    C --> D
+    A & B2 & C & D --> top["top 5 pages"]
+    top --> gen["Gemini 3.8 Flash<br/>answers from images"]
+    gen --> grade["graded by rule (numbers)<br/>or DeepSeek (text)"]
+```
+
+Data: 15 companies across 5 industries, 2 decks each (full year to March 2026 and Q1 of the following year). Sources are listed in [docs/sources.csv](docs/sources.csv); the PDFs themselves are not redistributed.
+
+## Methods
+
+| | What is indexed | Model | Page score |
+|---|---|---|---|
+| **A** | the page's text layer (PyMuPDF) | `BAAI/bge-m3`, one vector per page | cosine similarity |
+| **B2** | one description per chart, table or diagram, written by a local VLM from the whole page image | `qwen2.5vl:7b` (Ollama) for captions, `BAAI/bge-m3` for embedding | best figure on the page; pages without figures are never returned |
+| **C** | the page image | `vidore/colqwen2.5-v0.2`, multi-vector | late interaction (MaxSim) |
+| **D** | – | rankings of A and C | Reciprocal Rank Fusion, k = 60 |
+
+B1 (B with the Claude API) was planned but dropped by the developer's decision. Every method ranks all 1,429 pages for every question. Settings are fixed in [configs/](configs) before each method's first run.
+
+## Evaluation set
+
+80 questions in [eval/questions.csv](eval/questions.csv): 32 chart, 24 table, 12 diagram and 12 text questions. Each question lists its gold pages, as groups that must all be covered, with alternatives inside a group. The format and scoring rules are in [eval/README.md](eval/README.md).
+
+- The developer wrote 8 questions. Claude wrote 72, and a separate AI agent without the writer's context checked each one against the page images before it was accepted.
+- For the second 40 questions, candidate pages were drawn at random with a fixed seed, without looking at any retrieval result. So the set is not tilted toward pages one method finds easily.
+- Because Claude wrote the questions, no Claude model answers or grades them.
 
 ## Retrieval results
 
-40 questions ([eval/questions.csv](eval/questions.csv); format and scoring rules in [eval/README.md](eval/README.md)). Every method ranks all 1,429 pages for every question. A question counts as answerable at k when the top k pages cover every group of its gold pages. MRR uses the rank at which that first happens.
+A question counts as answerable at k when the top k pages cover every gold group. MRR uses the rank at which that first happens.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="results/figures/overall_dark.png">
-  <img alt="Bar chart of Recall@1, Recall@3, Recall@5 and MRR for methods A, B2 and C. C is highest on every metric; A and B2 are close." src="results/figures/overall_light.png">
+  <img alt="Bar chart of Recall@1, Recall@3, Recall@5 and MRR for A, B2, C and D on 80 questions. C is highest on every metric, D second, A and B2 lowest." src="results/figures/overall_light.png">
 </picture>
 
 | Method | Recall@1 | Recall@3 | Recall@5 | MRR |
 |---|---|---|---|---|
-| A: page text (BGE-M3) | 0.350 | 0.525 | 0.600 | 0.477 |
-| B2: VLM figure captions (Qwen2.5-VL 7B, BGE-M3) | 0.325 | 0.475 | 0.525 | 0.427 |
-| C: page images (ColQwen2.5) | **0.575** | **0.725** | **0.775** | **0.680** |
+| A: page text | 0.388 | 0.575 | 0.662 | 0.519 |
+| B2: figure captions | 0.388 | 0.537 | 0.600 | 0.484 |
+| C: page images | **0.625** | **0.825** | **0.850** | **0.737** |
+| D: A + C (RRF) | 0.537 | 0.762 | 0.838 | 0.661 |
 
-Differences from A are paired over questions, with a 95% percentile bootstrap interval (10,000 resamples, seed 0):
+Differences are paired over questions, with a 95% percentile bootstrap interval (10,000 resamples, seed 0):
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="results/figures/mrr_diff_vs_a_dark.png">
-  <img alt="MRR difference from A: B2 is -0.050 with interval -0.173 to +0.076; C is +0.202 with interval +0.084 to +0.329." src="results/figures/mrr_diff_vs_a_light.png">
+  <img alt="MRR difference from A: B2 -0.035 [-0.133, +0.065]; C +0.219 [+0.124, +0.316]; D +0.142 [+0.082, +0.206]." src="results/figures/mrr_diff_vs_a_light.png">
 </picture>
 
-- **C beats the text baseline.** MRR +0.202 [+0.084, +0.329], Recall@5 +0.175 [+0.025, +0.325]. Both intervals exclude zero.
-- **B2 is not distinguishable from A.** MRR −0.050 [−0.173, +0.076]. With 40 questions, this setup can't resolve differences of about ±0.1.
-- **Much of B2's gap comes from captioning failures, not from retrieval.** For 4 questions (q009, q014, q035, q040), at least one required group of gold pages contains only pages where captioning failed (see Limitations), so B2 can never make them answerable. On those 4 questions A scores 0.035 of MRR, which is most of the 0.050 gap; q014 alone is at rank 1 for A.
+| | MRR difference [95%] | Recall@5 difference [95%] |
+|---|---|---|
+| B2 − A | −0.035 [−0.133, +0.065] | −0.062 [−0.163, +0.037] |
+| C − A | **+0.219 [+0.124, +0.316]** | **+0.188 [+0.087, +0.287]** |
+| D − A | +0.142 [+0.082, +0.206] | +0.175 [+0.087, +0.263] |
+| D − C | **−0.076 [−0.151, −0.005]** | −0.013 [−0.087, +0.062] |
 
-Per-evidence and per-author tables, and the exact runs used (timestamp and commit), are in [results/comparison.md](results/comparison.md). That file and the charts are generated by `scripts/compare_methods.py`. The per-group results (6–16 questions per evidence type) are observations, not conclusions:
+By where the answer is printed, C leads on chart and table questions, and C and D lead together on text questions. On diagram questions (12) all four methods are about equal. Per-group and per-author tables are in [results/comparison.md](results/comparison.md); with 12–32 questions per group they are observations, not conclusions.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="results/figures/mrr_by_evidence_dark.png">
-  <img alt="MRR by evidence type for A, B2 and C. C leads on chart, table and text questions; on diagram questions A and B2 are slightly above C." src="results/figures/mrr_by_evidence_light.png">
+  <img alt="MRR by evidence type for A, B2, C and D. C leads on chart and table, C and D on text; the four methods are close on diagram questions." src="results/figures/mrr_by_evidence_light.png">
 </picture>
-
-### Indexing cost
-
-Each method's indexing cost differs a lot. B2 needs one generation call per page before anything can be embedded. Captioning all 1,429 pages with `qwen2.5vl:7b` on the RX 9070 XT took **5.2 hours, about 13 s per page**. Generation is the bottleneck: a median of about 400 output tokens per page, each needing a full forward pass. Embedding the resulting 2,130 figure descriptions with BGE-M3 took about 9 seconds. Captions are cached per page, so adding a new deck only costs captioning for that deck's pages. A and C embed each page directly in a single forward pass.
 
 ## Answer results
 
-`google/gemini-3.8-flash` answers each question from the top 5 pages of each retrieval run. A fourth condition gives it the gold pages directly, as an upper bound on reading. The model sees only the question and the images, labelled ページ1–5. It does not see page ids, because those name the company and the deck. Settings and prompts are in [configs/answer.toml](configs/answer.toml).
+`google/gemini-3.8-flash` answers each question from the top 5 pages of each method, and, as an upper bound, from the gold pages. It sees only the question and the images, labelled ページ1–5. It does not see page ids, because those name the company and the deck.
 
-Numeric questions (32) are graded by rule: the number must equal the printed value, and the unit must be the same. Other spellings of the same unit count as the same (e.g. ポイント = pt), but a different scale never does. Text questions (8) are graded by `deepseek/deepseek-v4.1-flash-1017` against the reference answer. Three different models write, answer and grade the questions: Claude writes them, Gemini answers and DeepSeek grades. This keeps a model from grading its own work. Both API models are called through OpenRouter, each pinned to its maker's own provider with fallbacks off. The provider that actually served each reply is recorded. The full run (160 answers) cost $0.96.
+- **Numeric questions (58)** are graded by rule. The number must equal the printed value, and the unit must match; other spellings of the same unit count, but a different scale never does.
+- **Text questions (22)** are graded by `deepseek/deepseek-v4.1-flash-1017` against the reference answer.
+
+Both API models are called through OpenRouter, each pinned to its maker's own provider with fallbacks off. The provider that served each reply is recorded. Settings and prompts are in [configs/answer.toml](configs/answer.toml). The 400 answers cost $2.42.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="results/figures/answer_accuracy_dark.png">
-  <img alt="Answer accuracy: A 0.575, B2 0.575, C 0.700, gold pages 0.950." src="results/figures/answer_accuracy_light.png">
+  <img alt="Answer accuracy on 80 questions: A 0.625, B2 0.613, C 0.775, D 0.787, gold pages 0.925." src="results/figures/answer_accuracy_light.png">
 </picture>
 
-| Condition | Accuracy | − A [95% interval] | When the 5 pages cover every gold group | When they don't |
+| Condition | Accuracy | − A [95%] | When the 5 pages cover every gold group | When they don't |
 |---|---|---|---|---|
-| A: page text | 0.575 | | 0.875 (n=24) | 0.125 (n=16) |
-| B2: figure captions | 0.575 | +0.000 [−0.150, +0.150] | 0.952 (n=21) | 0.158 (n=19) |
-| C: page images | **0.700** | +0.125 [−0.025, +0.275] | 0.903 (n=31) | 0.000 (n=9) |
-| Gold pages (upper bound) | 0.950 | +0.375 [+0.225, +0.525] | 0.950 (n=40) | – |
+| A: page text | 0.625 | | 0.906 (n=53) | 0.074 (n=27) |
+| B2: figure captions | 0.613 | −0.013 [−0.113, +0.087] | 0.958 (n=48) | 0.094 (n=32) |
+| C: page images | 0.775 | **+0.150 [+0.037, +0.263]** | 0.912 (n=68) | 0.000 (n=12) |
+| D: A + C (RRF) | 0.787 | +0.163 [+0.062, +0.263] | 0.940 (n=67) | 0.000 (n=13) |
+| Gold pages (upper bound) | 0.925 | +0.300 [+0.188, +0.412] | 0.925 (n=80) | – |
 
-- **Retrieval decides the answer.** When the retrieved pages contain the evidence, Gemini answers about 90% of questions correctly, whichever method found the pages. When they don't, it almost never does. So the differences between methods come from retrieval, not from reading.
-- **C still leads, but less clearly.** Its retrieval advantage carries through, at +0.125 accuracy over A, but this interval crosses zero. Each question is right or wrong, and 40 such outcomes give a much noisier measure than a rank-based metric like MRR.
-- **Most of the remaining gap is retrieval.** With the gold pages, accuracy is 0.950. Both misses there are grading-format misses, not reading errors (see below).
-- **Rule grading misses some correct answers.** 10 rule-graded answers marked wrong contain the gold number in their text. In 9 of them the answer is right in substance. (C on q004 really is wrong: it gives the forecast and mentions the gold figure only as last year's actual.) The 9 break down as follows:
-  - q031 asks for a trend, but its gold value is a single number (518). The model described the trend and left the single-number field empty. This happened in all four conditions.
-  - q036 asks "how much did it decrease". The model answered 73, while the gold value is −73. This happened in all four conditions.
-  - q034 under A, and q038 under B2, had a missing value or unit.
+- **The answer follows the retrieval.** With the evidence in the top 5, every method's answers are about 91–96% correct. Without it, almost none are.
+- **C and D answer about equally well** (0.775 and 0.787, one question apart). Only the top 5 matters for answering, and their Recall@5 is nearly the same (0.850 and 0.838). D's lower MRR comes from ranks inside the top 5.
+- **With 40 questions, C's answer advantage over A was not distinguishable from zero** (+0.125 [−0.025, +0.275]). With 80 questions it is. Doubling the set was what made this conclusion possible.
 
-  These misses lower every condition by a similar amount, so the comparison between methods changes little. The absolute accuracies are slightly understated, though. q031 and q036 are flagged for the developer: the evaluation set is protected, so they were not edited.
+## What goes wrong
 
-### Changes made after the first answer run
+[`scripts/analyze_failures.py`](scripts/analyze_failures.py) sorts every retrieval miss (gold not covered in the top 5) by its top-1 page. The full list is in [results/failure_analysis.md](results/failure_analysis.md).
 
-Two grading problems showed up in the first full run. Both were fixed before the results above were produced, and every number above comes from the fixed version. Generation was not changed; all answers come from the cache of the first run.
+| Method | Top-1 page from the asked company | Misses | other company | other deck, same company | other page, same deck | no caption |
+|---|---|---|---|---|---|---|
+| A | 66/80 | 27 | 10 | 4 | 13 | 0 |
+| B2 | 65/80 | 32 | 6 | 5 | 14 | 7 |
+| C | **76/80** | **12** | 2 | 5 | 5 | 0 |
+| D | 72/80 | 13 | 3 | 2 | 8 | 0 |
 
-1. **Judge prompt.** The JSON example in DeepSeek's prompt was not valid JSON (`"correct": true または false`), and one reply came back without the `correct` field. The example was rewritten as valid JSON, and all text questions were regraded.
-2. **Unit spellings.** Two answers had the right number but a different spelling of the unit (`ポイント` for `pt`, `millions of dollars` for `百万ドル`). The developer chose to accept other spellings of the same unit. The table of spellings was written from the units in the evaluation set, before the rest of the results were seen. It never maps one scale to another.
+- **Text retrieval confuses companies.** In 10 of A's 27 misses the top page belongs to another company. Slides from different companies share vocabulary (売上収益, 営業利益, 前年同期比), while the company name is often only in a logo. C, which sees the logo and layout, almost never makes this mistake.
+- **C's remaining misses are within the right company.** They are the wrong deck (full year against Q1), or the wrong page among similar ones, such as pipeline tables and segment breakdowns.
+- **Why D lost to C.** Before running D, I predicted that A would rescue C's misses on dense, text-heavy pages, and that D would match C's MRR. The first part held: three of C's misses moved into D's top 5 in the 40-question run. The second part failed. RRF with k = 60 gives a page ranked 1st by C and 151st by A a lower score than pages ranked around 5th to 8th by both. So A's company mix-ups pushed down pages that C had right. Weights and k were not tuned afterwards, because that would fit them to this evaluation set.
+- **B2's own failure mode.** For 7 questions, a required gold page has no caption because generation looped. So B2 can never return them.
 
-Following `eval/README.md`, the LLM grading was checked by eye. The developer reviewed all 32 DeepSeek judgements (`eval/judge_check.csv`) and agreed with every one: 32/32. There were 26 true and 6 false. The same 8 text questions are graded under 4 conditions, so this covers 8 distinct questions, not 32 independent ones. One judgement call in those rows matters: for q024, q025 and q041 the reference answer adds detail beyond what the question asks. Both DeepSeek and the developer treated that detail as optional. To reproduce, run `uv run python scripts/judge_check.py export`, label the rows, then run `uv run python scripts/judge_check.py agree`.
+## Indexing cost
+
+B2 needs one generation call per page before anything can be embedded. Captioning 1,429 pages with `qwen2.5vl:7b` on an RX 9070 XT took **5.2 hours, about 13 s per page**. Generation is the bottleneck: a median of about 400 output tokens per page, each needing a full forward pass. Embedding the resulting 2,130 descriptions took about 9 seconds. Captions are cached per page, so adding a deck only costs captioning for that deck. A and C embed each page in a single forward pass, and D reuses their indexes.
+
+## Grading checks and changes
+
+Two grading problems showed up after the first answer run on 40 questions. Both were fixed before any reported number was produced. Generation was not changed.
+
+1. **Judge prompt.** The JSON example in DeepSeek's prompt was not valid JSON (`"correct": true または false`), and one reply came back without a verdict. The example was rewritten, and every text answer was regraded.
+2. **Unit spellings.** Two right numbers had the unit spelled differently (`ポイント` for `pt`, `millions of dollars` for `百万ドル`). The developer chose to accept other spellings of the same unit. The table of spellings was written from the evaluation set's units before the rest of the results were seen.
+
+**The developer checks the LLM grading by eye** ([eval/README.md](eval/README.md)). On the 40-question run, the developer agreed with all 32 DeepSeek verdicts. On the 80-question run there are 110 verdicts. 36 are identical to verdicts already checked, and the other 74 are waiting for the developer's labels (`eval/judge_check_20261101-163404.csv`).
+
+**Rule grading still misses a few right answers.** In 12 answers marked wrong, the answer text contains the gold number and is right in substance:
+
+- q031 asks for a trend but has a single gold number.
+- q036 and q075 ask how much something decreased. The model gave the decrease with a minus sign where the gold value is positive, or the other way round.
+- In a few answers the model left the number or unit field empty.
+
+These misses hit every condition similarly, so the comparison changes little, but absolute accuracies are slightly understated. The evaluation set is protected and was not edited after the results were seen. With the gold pages, the model also said it couldn't tell on 3 questions (q046, q079, q081). Those are real reading failures.
 
 ## Limitations
 
-- **Caption loops (B2).** 125 of 1,429 pages (8.7%) got no usable caption. Ollama aborted 23 of them with "token repeat limit reached". The other 102 hit the 4,096-token output cap, so their JSON was cut off. Of those, 100 ended in a repeated string, so they were loops too, not genuinely long tables. Failed pages are kept as "no figures" and not retried, since with temperature 0 and a fixed seed a retry fails the same way. These failures hit 7 of the 77 gold pages and make 4 questions unanswerable for B2. Adding a repetition penalty and recaptioning would probably help. It was not done, so the result above is for the settings as they were frozen.
-- **Hallucinated figures on low-text pages (B2).** On section-divider pages that show only a heading, the model sometimes invents charts. The prompt was revised once, from v1 to v2, before the full run. That revision was checked only on pages that are not gold pages for any question. v2 still does this on some divider pages, and it was frozen anyway rather than tuned further.
-- **Pages without figures are invisible to B2.** By design, B2 indexes only figure descriptions. A page the model judges to have no figures can't be retrieved. In this run every gold page without figures was a captioning failure, so this didn't cost a question by itself, but it would for text-only evidence.
-- **C uses an English-trained retriever.** `vidore/colqwen2.5-v0.2` is trained mainly on English documents, and the queries here are Japanese. It still did best, but it was not tuned for this setting.
-- **Answers can't be regenerated identically.** Gemini 3.x ignores temperature, and no dated model id exists for `gemini-3.8-flash`. Reproducibility therefore rests on the cached replies, together with the provider and model recorded for each reply.
-- **The upper bound sees more pages for some questions.** The gold condition passes every gold page, which is up to 8 pages for q002. The retrieval conditions pass 5.
-- **Small evaluation set.** 40 questions, of which 32 were written by Claude and 8 by the developer. Per-group counts are small. Claude wrote most questions, so no Claude model generates or grades answers in this project.
+- **Caption loops (B2).** 125 of 1,429 pages (8.7%) got no usable caption. Ollama stopped 23 of them for repeating tokens. The other 102 hit the 4,096-token output cap, and 100 of those ended in a repeated string. Failed pages are kept as "no figures", because with temperature 0 and a fixed seed a retry fails the same way. 10 of the 127 gold pages are affected. A repetition penalty and recaptioning would probably help; that was not done.
+- **Hallucinated figures (B2).** On section-divider pages, the model sometimes invents charts. The prompt was revised once before the full run, checked only on pages that are not gold pages, and then frozen.
+- **C uses an English-trained retriever.** `vidore/colqwen2.5-v0.2` is trained mainly on English documents, and the queries are Japanese.
+- **Answers can't be regenerated identically.** Gemini 3.x ignores temperature, and `gemini-3.8-flash` has no dated id. Reproducibility rests on the cached replies and on the provider and model recorded for each reply.
+- **The upper bound sees more pages for some questions.** It passes every gold page, which is up to 8 pages. The methods pass 5.
+- **The evaluation set is mostly AI-written.** 72 of 80 questions were written by Claude and checked by another AI, not by a person. On the 8 developer-written questions C is also first, but 8 is too few to say more.
 
 ## Reproducing
 
@@ -99,15 +161,25 @@ uv run python scripts/run_eval.py --config configs/method_a.toml
 uv run python scripts/make_captions.py --config configs/method_b2.toml   # B2 only; resumable, about 5 h
 uv run python scripts/run_eval.py --config configs/method_b2.toml
 uv run python scripts/run_eval.py --config configs/method_c.toml
-uv run python scripts/run_answers.py --config configs/answer.toml   # needs OPENROUTER_API_KEY in .env
+uv run python scripts/run_eval.py --config configs/method_d.toml         # reuses A's and C's indexes
+uv run python scripts/run_answers.py --config configs/answer.toml        # needs OPENROUTER_API_KEY in .env
 uv run python scripts/compare_methods.py
+uv run python scripts/analyze_failures.py
 ```
 
-Each run is saved to `results/method_<x>/<timestamp>/`. `run.json` holds the config, the model revisions, the SHA-256 of the evaluation set and page list, the git commit (and whether the tree was clean), and package versions. `per_question.csv` holds each question's rank and top 10 pages. All settings were fixed in `configs/` before the first run of each method.
+Each run is saved to `results/<kind>/<timestamp>/`.
+
+- `run.json` holds the config, the model revisions, the SHA-256 of the evaluation set and the page list, the git commit (and whether the tree was clean), and package versions.
+- `per_question.csv` holds each question's rank and top 10 pages, or each answer and its grade.
+- `compare_methods.py` refuses to compare runs made on different versions of the evaluation set. It also recomputes every summary number from the per-question files.
+
+The 40-question runs are kept in `results/` and in git history.
 
 ## Design decisions
 
-**Caption whole pages instead of cropping figures (method B).** I first tried locating figures from the PDF structure: clustered vector drawings, embedded images and detected tables, merged into regions. On a sample of six slides from four industries, the crops regularly left out what a captioner needs most: units, legends, axis labels and the slide title. Some figures that fill the whole slide were split into fragments, and some tables lost their middle rows. IR slides are designed so that one page carries one message, so cropping removes context instead of focusing it. Method B therefore sends the full page image and asks for one structured description per figure. That keeps figure-level retrieval units without the cropping step.
+**Caption whole pages instead of cropping figures (method B).** I first tried locating figures from the PDF structure: clustered vector drawings, embedded images and detected tables, merged into regions. On a sample of six slides from four industries, the crops often left out what a captioner needs most: units, legends, axis labels and the slide title. Some figures that fill the whole slide were split into fragments, and some tables lost their middle rows. IR slides are designed so that one page carries one message, so cropping removes context instead of focusing it. Method B therefore sends the full page image and asks for one structured description per figure.
+
+**Predict before running.** Method D's expected outcome was written down after the failure analysis but before any fused ranking was computed. The prediction was half wrong, and the README says so instead of tuning D until it wins.
 
 ## Environment
 

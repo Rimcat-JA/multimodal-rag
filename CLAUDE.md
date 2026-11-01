@@ -9,6 +9,7 @@
 - **A. テキストのみ**：PyMuPDF でテキストを抽出 → BGE-M3 で埋め込み（基準）
 - **B. 図表キャプション**：ページ画像を丸ごと画像対応 LLM に渡し、ページ内の図表ごとに説明文と Markdown 表を出させて埋め込む（B1: Claude API／B2: ローカルの Qwen2.5-VL）。B1 は開発者の判断で実施しない（2026-11-01）。図表の切り出しはしない（README の Design decisions を参照）
 - **C. ページ画像検索**：ColQwen2.5／ColPali の複数ベクトル埋め込み ＋ Late Interaction（MaxSim）
+- **D. A と C の融合**：A と C の順位を Reciprocal Rank Fusion（k=60）でまとめる。失敗の分析のあと、結果を見る前に設定を固定した（2026-11-01 追加）
 - 回答生成：どの方式でも、検索で見つかったページ画像と質問を画像対応 LLM に渡して回答させる。**評価セットの問題を Claude が作っているので、回答生成には Claude を使わない**。回答生成は **Gemini の API**（2026-10-31 決定）。Gemini と DeepSeek は OpenRouter 経由で呼び、提供元をそれぞれの本家に固定する（2026-11-01 決定、`configs/answer.toml`）。エージェント型のツール（Codex など）は、リポジトリ内の正解を読めてしまうので回答生成に使わない
 - 採点：検索は Recall@1・3・5 と MRR。回答は、数値の質問を自動判定し、文章の質問は **DeepSeek V4.1 Flash の API** が採点する。問題を作る（Claude）・答える（Gemini）・採点する（DeepSeek）を別々のモデルにして、自分の答えを自分で採点する偏りを避けるため（詳細は `eval/README.md`）
 
