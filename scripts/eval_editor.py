@@ -41,7 +41,7 @@ INDUSTRY_LABELS = {
     "manufacturing": "製造", "finance": "金融", "pharma": "医薬品",
     "it_telecom": "IT・通信", "trading_realestate": "商社・不動産",
 }
-# Targets for the first 40 questions (eval/README.md)
+# Targets per batch of 40 questions (eval/README.md); the set has two batches
 TARGET_EVIDENCE = {"chart": 16, "table": 12, "diagram": 6, "text": 6}
 TARGET_Q_TYPE = {"lookup": 16, "compare": 12, "trend": 8, "structure": 4}
 TARGET_PER_INDUSTRY = 8
