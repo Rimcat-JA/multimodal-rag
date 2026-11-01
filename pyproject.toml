@@ -8,6 +8,7 @@ dependencies = [
     "matplotlib>=3.11.2",
     "peft>=0.21.2",
     "pymupdf>=1.28.2",
+    "python-dotenv>=1.2.4",
     "sentence-transformers[image]>=6.2.0",
     "streamlit>=1.65.0",
     # ROCm builds for the Radeon RX 9070 XT (gfx1201), served from AMD's index below.

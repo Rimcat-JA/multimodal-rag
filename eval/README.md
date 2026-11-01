@@ -74,8 +74,8 @@ qid,question,gold_pages,answer,answer_value,answer_unit,q_type,evidence,author,r
 ### 回答の採点
 
 - 数値の質問は `answer_value` と `answer_unit` で自動判定する。表示された桁数で一致すれば正解（`15.2` が正解なら `15` は不正解）。
-- 回答は **Gemini の API** が、検索で見つかったページ画像と質問だけを見て作る（2026-10-31 決定）。
-- 文章で答える質問（`answer_value` が空のもの）は、**DeepSeek V4.1 Flash の API** が正解（`answer`）と照らし合わせて採点する（2026-10-31 決定）。問題を作った Claude とも、答えを作った Gemini とも別のモデルにして、自分の答えを自分で採点する偏りを避けるため。採点結果の一部は開発者が目で見て照合し、一致率を記録する。採点のプロンプトとモデル ID は評価を回す前に固定し、採点結果は `outputs/cache/` に保存する。
+- 回答は **Gemini の API** が、検索で見つかったページ画像と質問だけを見て作る（2026-10-31 決定）。OpenRouter 経由で呼び、提供元を Google AI Studio に固定する。
+- 文章で答える質問（`answer_value` が空のもの）は、**DeepSeek V4.1 Flash の API** が正解（`answer`）と照らし合わせて採点する（2026-10-31 決定）。問題を作った Claude とも、答えを作った Gemini とも別のモデルにして、自分の答えを自分で採点する偏りを避けるため。採点結果の一部は開発者が目で見て照合し、一致率を記録する。採点のプロンプトとモデル ID は評価を回す前に固定し、採点結果は `outputs/cache/` に保存する。DeepSeek も OpenRouter 経由で、日付つきの版（`deepseek/deepseek-v4.1-flash-1017`）を本家の提供元に固定して使う。
 - 評価セットは dev / test に分けない。そのかわり、プロンプト・k・チャンクサイズなどの設定は**評価を回す前に決めて固定する**。結果を見て調整し直した場合は、README にそのことを書く。
 
 ## 配分の目安

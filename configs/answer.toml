@@ -1,0 +1,56 @@
+# Answer generation (Gemini) and grading (numbers by rule, text by DeepSeek).
+# Fixed before the first run (2026-11-01). If any value changes after
+# results have been seen, note it in README.
+
+# Pages given to the generator per question: the top k of each retrieval run.
+top_k = 5
+
+# Retrieval runs whose rankings are used (results/method_<x>/<timestamp>).
+# A fourth condition, "gold", gives the gold pages themselves (every page in
+# gold_pages, in order): an upper bound that separates retrieval failures from
+# reading failures.
+[runs]
+A = "results/method_a/20261031-230423"
+B2 = "results/method_b2/20261101-131647"
+C = "results/method_c/20261031-234117"
+
+# Both models are called through OpenRouter, each pinned to its maker's own
+# provider (no fallback to other providers or quantized copies).
+[generator]
+# No dated id exists for this model; the reply's model and provider are recorded.
+# Gemini 3.x ignores temperature, so replies are cached instead (outputs/cache/answers).
+model = "google/gemini-3.8-flash"
+provider = "google-ai-studio"
+# Mapped to Gemini's thinkingLevel; medium is the model's default.
+reasoning_effort = "medium"
+# Image resolution can't be set through OpenRouter; Gemini 3's default is
+# 1,120 tokens per image (the same as MEDIA_RESOLUTION_HIGH).
+max_tokens = 16384
+prompt = """
+あなたは企業の決算説明資料を読んで質問に答えます。添付したページ画像だけを根拠に答えてください。画像に書かれていないことを推測で補わないでください。
+
+次の3つを JSON で返してください。
+- answer：質問への答えを日本語の1〜2文で書く。
+- value：答えが1つの数値なら、その数値だけを書く。資料に表示された桁数のまま、カンマと単位を付けず、負の値は - を付ける（例：37662、-2.6、4.0）。計算が必要な質問は計算した結果を書く。答えが数値でなければ空文字にする。
+- unit：value の単位を、質問または資料の表記どおりに書く（例：億円、%、千台、pt）。value が空なら空文字にする。
+
+画像から答えが分からないときは、answer に「資料からは分かりません」と書き、value と unit は空文字にしてください。
+"""
+
+[grader]
+# Dated id of DeepSeek-V4.1-Flash.
+model = "deepseek/deepseek-v4.1-flash-1017"
+provider = "deepseek"
+temperature = 0
+# Thinking off, so temperature 0 takes effect.
+reasoning_effort = "none"
+max_tokens = 1024
+prompt = """
+あなたは採点者です。質問・正解・回答が与えられます。回答が正解と同じ内容を述べているかを判定してください。
+
+- 正解の要点がすべて回答に含まれ、正解と矛盾しなければ正しいとする。言い回しの違いは問わない。
+- 回答に正解にない情報が加わっていても、正解と矛盾しなければ減点しない。
+- 要点が欠けている、数値や固有名詞が違う、または「分からない」と答えている場合は誤りとする。
+
+{"correct": true または false, "reason": "判定の理由（日本語で1文）"} の JSON だけを返してください。
+"""
