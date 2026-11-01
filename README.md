@@ -135,7 +135,7 @@ Two grading problems showed up after the first answer run on 40 questions. Both 
 1. **Judge prompt.** The JSON example in DeepSeek's prompt was not valid JSON (`"correct": true または false`), and one reply came back without a verdict. The example was rewritten, and every text answer was regraded.
 2. **Unit spellings.** Two right numbers had the unit spelled differently (`ポイント` for `pt`, `millions of dollars` for `百万ドル`). The developer chose to accept other spellings of the same unit. The table of spellings was written from the evaluation set's units before the rest of the results were seen.
 
-**The developer checks the LLM grading by eye** ([eval/README.md](eval/README.md)). On the 40-question run, the developer agreed with all 32 DeepSeek verdicts. On the 80-question run there are 110 verdicts. 36 are identical to verdicts already checked, and the other 74 are waiting for the developer's labels (`eval/judge_check_20261101-163404.csv`).
+**The developer checked the LLM grading by eye** ([eval/README.md](eval/README.md)). On the 80-question run, the developer agreed with all 110 DeepSeek verdicts (90 correct, 20 wrong), which is 22 text questions under 5 conditions. 36 of them were identical to verdicts already checked on the 40-question run. The labels are in `eval/judge_check_20261101-163404.csv`.
 
 **Rule grading still misses a few right answers.** In 12 answers marked wrong, the answer text contains the gold number and is right in substance:
 
