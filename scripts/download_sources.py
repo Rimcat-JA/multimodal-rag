@@ -1,6 +1,9 @@
 """Download the IR presentation PDFs listed in docs/sources.csv into data/raw/.
 
-Run with:  uv run python scripts/download_sources.py [--dry-run]
+Run with:  uv run python scripts/download_sources.py [--dry-run] [--split train]
+
+--split train reads docs/train_sources.csv (decks used only for fine-tuning,
+from companies that are not in the evaluation set) and saves to data/train/raw/.
 
 - Files that already exist are skipped, so the script can be re-run safely.
 - Each download is checked to be a real PDF (by its first bytes).
@@ -18,8 +21,9 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCES = ROOT / "docs" / "sources.csv"
-RAW_DIR = ROOT / "data" / "raw"
+SPLITS = {"eval": (ROOT / "docs" / "sources.csv", ROOT / "data" / "raw"),
+          "train": (ROOT / "docs" / "train_sources.csv", ROOT / "data" / "train" / "raw")}
+SOURCES, RAW_DIR = SPLITS["eval"]
 CHECKSUMS = RAW_DIR / "checksums.csv"
 
 # Identify honestly as a script. If a site refuses it (e.g. 403), don't work around
@@ -43,10 +47,21 @@ def fetch(url: str) -> bytes:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true", help="list what would be downloaded")
+    parser.add_argument("--split", choices=list(SPLITS), default="eval")
     args = parser.parse_args()
+    global SOURCES, RAW_DIR, CHECKSUMS
+    SOURCES, RAW_DIR = SPLITS[args.split]
+    CHECKSUMS = RAW_DIR / "checksums.csv"
 
     with SOURCES.open(encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
+    if args.split == "train":
+        from multimodal_rag.finetune.data import overlapping_companies
+
+        with SPLITS["eval"][0].open(encoding="utf-8") as f:
+            overlap = overlapping_companies(rows, list(csv.DictReader(f)))
+        if overlap:
+            raise SystemExit(f"training sources include evaluation companies {sorted(overlap)}; remove them")
 
     checksums: dict[str, str] = {}
     if CHECKSUMS.exists():

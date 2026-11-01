@@ -1,0 +1,52 @@
+# Fine-tuning ColQwen2.5 (method C) on decks of companies that are NOT in the
+# evaluation set (docs/train_sources.csv). Fixed before the first training run
+# (2026-11-01). Model selection uses validation companies only; the evaluation
+# set is used once, after training, by scripts/run_eval.py.
+
+# The model being fine-tuned: the same checkpoint as configs/method_c.toml.
+base = "configs/method_c.toml"
+
+[queries]
+# Synthetic training queries, one request per page (scripts/make_train_queries.py).
+model = "google/gemini-3.8-flash"
+provider = "google-ai-studio"
+reasoning_effort = "low"
+max_tokens = 2048
+queries_per_page = 2
+prompt = """
+あなたは、企業の決算説明資料を検索する利用者が入力しそうな質問を作ります。画像は{company}の{period}の決算説明資料の1ページです。
+
+このページを見なければ答えられない、具体的な質問を最大{n}個作り、JSON で返してください。
+- 質問には会社名と期間（例：2026年3月期、2027年3月期第1四半期）を入れる。
+- スライドの見出しや文言をそのまま写さず、利用者が自分の言葉で聞くように書く。
+- グラフ・表・図に載っている数値や関係を問う質問を優先する。答えそのものは書かない。
+- 画像に書かれていないことを前提にしない。
+- 表紙、目次、注意事項、章の区切りなど、具体的に問える内容がないページでは、queries を空のリストにする。
+"""
+
+[negatives]
+# One hard negative per query: the base model's highest-ranked other page of the
+# same company, skipping pages that score >= max_ratio of the positive (they may
+# show the same fact). See src/multimodal_rag/finetune/data.py.
+max_ratio = 0.95
+
+[split]
+# Companies held out for model selection: random.Random(seed).sample of the sorted
+# training company ids. The chosen ids are recorded in the run's run.json.
+seed = 20261101
+n_val_companies = 3
+
+[train]
+# Only the LoRA adapters already in the checkpoint (about 60M parameters) are
+# trained; the vision tower and base weights stay frozen.
+trainable = "lora"
+epochs = 1
+batch_size = 16
+# GradCache mini-batch: memory per step stays near 9 GiB on the 16 GB GPU.
+mini_batch_size = 2
+learning_rate = 2e-5
+warmup_ratio = 0.05
+eval_steps = 0.1
+seed = 42
+# Best checkpoint by the validation companies' MRR@10.
+metric_for_best_model = "eval_val_maxsim_mrr@10"
