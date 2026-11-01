@@ -6,7 +6,7 @@ Multimodal RAG over financial-report charts and tables. The goal is to compare t
 - **B. Figure captioning**: a vision LLM reads each whole page image and returns one structured description per chart or table (type, title, unit, Markdown table, summary), which is then embedded. B2 uses a local Qwen2.5-VL. B1 (the same with the Claude API) was planned but dropped by the developer's decision, so only B2 was run.
 - **C. Page-image retrieval**: ColQwen2.5 multi-vector embeddings with late interaction (MaxSim)
 
-> Status: retrieval and answer generation for A, B2 and C are evaluated (below). The developer's check of the LLM grading is pending. Data: 15 companies across 5 industries, 30 decks, 1,429 pages. Sources are listed in [docs/sources.csv](docs/sources.csv). The PDFs themselves are not redistributed.
+> Status: retrieval and answer generation for A, B2 and C are evaluated (below). The LLM grading was checked by the developer (32/32 agreement). Data: 15 companies across 5 industries, 30 decks, 1,429 pages. Sources are listed in [docs/sources.csv](docs/sources.csv). The PDFs themselves are not redistributed.
 
 ## Retrieval results
 
@@ -80,7 +80,7 @@ Two grading problems showed up in the first full run. Both were fixed before the
 1. **Judge prompt.** The JSON example in DeepSeek's prompt was not valid JSON (`"correct": true または false`), and one reply came back without the `correct` field. The example was rewritten as valid JSON, and all text questions were regraded.
 2. **Unit spellings.** Two answers had the right number but a different spelling of the unit (`ポイント` for `pt`, `millions of dollars` for `百万ドル`). The developer chose to accept other spellings of the same unit. The table of spellings was written from the units in the evaluation set, before the rest of the results were seen. It never maps one scale to another.
 
-Following `eval/README.md`, part of the LLM grading is checked by eye: `uv run python scripts/judge_check.py export` lists all 32 DeepSeek judgements in `eval/judge_check.csv`, and `agree` reports the agreement once they are labelled.
+Following `eval/README.md`, the LLM grading was checked by eye. The developer reviewed all 32 DeepSeek judgements (`eval/judge_check.csv`) and agreed with every one: 32/32. There were 26 true and 6 false. The same 8 text questions are graded under 4 conditions, so this covers 8 distinct questions, not 32 independent ones. One judgement call in those rows matters: for q024, q025 and q041 the reference answer adds detail beyond what the question asks. Both DeepSeek and the developer treated that detail as optional. To reproduce, run `uv run python scripts/judge_check.py export`, label the rows, then run `uv run python scripts/judge_check.py agree`.
 
 ## Limitations
 
