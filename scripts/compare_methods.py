@@ -199,6 +199,16 @@ def main() -> None:
                   "| Method | MRR − A [95% interval] | Recall@5 − A [95% interval] |", "|---|---|---|"]
         lines += [f"| {LABELS[m]} | " + " | ".join(f"{d[0]:+.3f} [{d[1]:+.3f}, {d[2]:+.3f}]" for d in (diffs[m]["mrr"], diffs[m]["recall@5"]))
                   + " |" for m in diffs]
+    if "C" in runs and "D" in runs:
+        # D fuses C with A, so the question that matters for D is whether it beats C alone.
+        d_vs_c = {"mrr": paired_bootstrap([reciprocal_rank(ranks["C"][q]) for q in qids],
+                                          [reciprocal_rank(ranks["D"][q]) for q in qids]),
+                  "recall@5": paired_bootstrap([answerable_within(ranks["C"][q], 5) for q in qids],
+                                               [answerable_within(ranks["D"][q], 5) for q in qids])}
+        lines += ["", "## D compared with C (same paired bootstrap)", "",
+                  "| | MRR − C [95% interval] | Recall@5 − C [95% interval] |", "|---|---|---|",
+                  f"| {LABELS['D']} | " + " | ".join("{:+.3f} [{:+.3f}, {:+.3f}]".format(*d_vs_c[x]) for x in ("mrr", "recall@5"))
+                  + " |"]
     for title, table in (("By evidence type", by_evidence), ("By question author", by_author)):
         lines += ["", f"## {title}", "",
                   "Few questions per group: treat differences here as observations, not conclusions.", "",
@@ -232,7 +242,7 @@ def main() -> None:
         style_axes(ax, theme)
         grouped_bars(ax, [METRIC_LABELS[x] for x in METRICS], {m: [overall[m][x] for x in METRICS] for m in runs}, theme)
         ax.set_title(f"Retrieval quality on {len(qids)} questions (higher is better)", color=theme["text"], loc="left")
-        legend(ax, theme, loc="upper left", bbox_to_anchor=(0, -0.08), ncol=len(runs))
+        legend(ax, theme, loc="upper left", bbox_to_anchor=(0, -0.08), ncol=2)
         save(fig, "overall", theme_name, theme)
 
         fig, ax = plt.subplots(figsize=(8, 4))
@@ -241,7 +251,7 @@ def main() -> None:
         grouped_bars(ax, [f"{g} (n={by_evidence[g]['n']})" for g in groups],
                      {m: [by_evidence[g][m]["mrr"] for g in groups] for m in runs}, theme)
         ax.set_title("MRR by where the answer is printed", color=theme["text"], loc="left")
-        legend(ax, theme, loc="upper left", bbox_to_anchor=(0, -0.08), ncol=len(runs))
+        legend(ax, theme, loc="upper left", bbox_to_anchor=(0, -0.08), ncol=2)
         save(fig, "mrr_by_evidence", theme_name, theme)
 
         if diffs:
@@ -264,14 +274,14 @@ def main() -> None:
             save(fig, "mrr_diff_vs_a", theme_name, theme)
 
         if answer_dir:
-            fig, ax = plt.subplots(figsize=(8, 3.6))
+            fig, ax = plt.subplots(figsize=(9, 4))
             style_axes(ax, theme)
             ax.bar(range(len(conditions)), [acc[c] for c in conditions], 0.6,
                    color=[theme["series"][c] for c in conditions], edgecolor=theme["surface"], linewidth=2)
             for i, c in enumerate(conditions):
                 ax.annotate(f"{acc[c]:.3f}", (i, acc[c]), xytext=(0, 4), textcoords="offset points",
                             ha="center", color=theme["text"])
-            ax.set_xticks(range(len(conditions)), [LABELS.get(c, GOLD_LABEL).replace(" (", "\n(") for c in conditions],
+            ax.set_xticks(range(len(conditions)), [LABELS.get(c, GOLD_LABEL).replace(": ", "\n").replace(" (", "\n(") for c in conditions],
                           color=theme["text"])
             ax.set_ylim(0, 1.05)
             ax.set_title(f"Answer accuracy on {len(qids)} questions (top {answer_meta['config']['top_k']} pages)",

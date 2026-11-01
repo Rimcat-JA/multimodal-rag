@@ -7,17 +7,19 @@ A miss is a question whose top 5 pages don't cover every gold group. Each miss i
 
 | Method | Top-1 page from the asked company |
 |---|---|
-| A: page text (BGE-M3) | 32/40 |
-| B2: VLM figure captions (Qwen2.5-VL) | 31/40 |
-| C: page images (ColQwen2.5) | 39/40 |
+| A: page text (BGE-M3) | 66/80 |
+| B2: VLM figure captions (Qwen2.5-VL) | 65/80 |
+| C: page images (ColQwen2.5) | 76/80 |
+| D: A + C fused (RRF) | 72/80 |
 
 ## Misses by type (top 5)
 
 | Method | Misses | other company | other deck | other page | no caption |
 |---|---|---|---|---|---|
-| A: page text (BGE-M3) | 16 | 6 | 2 | 8 | 0 |
-| B2: VLM figure captions (Qwen2.5-VL) | 19 | 4 | 5 | 6 | 4 |
-| C: page images (ColQwen2.5) | 9 | 0 | 4 | 5 | 0 |
+| A: page text (BGE-M3) | 27 | 10 | 4 | 13 | 0 |
+| B2: VLM figure captions (Qwen2.5-VL) | 32 | 6 | 5 | 14 | 7 |
+| C: page images (ColQwen2.5) | 12 | 2 | 5 | 5 | 0 |
+| D: A + C fused (RRF) | 13 | 3 | 2 | 8 | 0 |
 
 ## Every miss
 
@@ -39,6 +41,17 @@ A miss is a question whose top 5 pages don't cover every gold group. Each miss i
 | A | q035 | table | compare | 11 | other page | `itochu/fy2026_q1/p001` |
 | A | q037 | text | lookup | 6 | other deck | `mitsubishicorp/fy2025_full/p014` |
 | A | q038 | chart | trend | 57 | other page | `mitsuifudosan/fy2026_q1/p005` |
+| A | q042 | chart | trend | 7 | other page | `smfg/fy2026_q1/p008` |
+| A | q043 | chart | compare | 10 | other page | `smfg/fy2026_q1/p012` |
+| A | q045 | chart | lookup | 659 | other deck | `mufg/fy2025_full/p002` |
+| A | q046 | table | compare | 15 | other company | `smfg/fy2025_full/p065` |
+| A | q048 | table | lookup | 15 | other page | `tokiomarine/fy2025_full/p011` |
+| A | q053 | chart | trend | 141 | other page | `recruit/fy2025_full/p073` |
+| A | q061 | table | lookup | 15 | other company | `mitsubishicorp/fy2025_full/p018` |
+| A | q064 | text | lookup | 8 | other company | `itochu/fy2026_q1/p019` |
+| A | q065 | chart | compare | 6 | other page | `hitachi/fy2026_q1/p003` |
+| A | q070 | chart | compare | 6 | other deck | `daiichisankyo/fy2025_full/p015` |
+| A | q072 | table | trend | 10 | other company | `astellas/fy2025_full/p031` |
 | B2 | q005 | table | lookup | 232 | other company | `mitsubishicorp/fy2025_full/p012` |
 | B2 | q008 | table | lookup | 29 | other page | `hitachi/fy2026_q1/p030` |
 | B2 | q009 | chart | lookup | never | no caption | `mufg/fy2025_full/p051` |
@@ -58,6 +71,19 @@ A miss is a question whose top 5 pages don't cover every gold group. Each miss i
 | B2 | q036 | chart | compare | 11 | other deck | `mitsubishicorp/fy2025_full/p045` |
 | B2 | q037 | text | lookup | 125 | other deck | `mitsubishicorp/fy2025_full/p014` |
 | B2 | q040 | table | lookup | never | no caption | `mitsuifudosan/fy2026_q1/p005` |
+| B2 | q042 | chart | trend | 15 | other page | `smfg/fy2026_q1/p012` |
+| B2 | q045 | chart | lookup | 151 | other company | `mitsubishicorp/fy2025_full/p020` |
+| B2 | q048 | table | lookup | 780 | other page | `tokiomarine/fy2025_full/p013` |
+| B2 | q053 | chart | trend | 7 | other page | `recruit/fy2025_full/p073` |
+| B2 | q056 | table | lookup | 28 | other page | `fujitsu/fy2026_q1/p029` |
+| B2 | q064 | text | lookup | 132 | other page | `hitachi/fy2026_q1/p006` |
+| B2 | q065 | chart | compare | 17 | other page | `hitachi/fy2026_q1/p006` |
+| B2 | q067 | text | lookup | 273 | other page | `astellas/fy2025_full/p010` |
+| B2 | q068 | diagram | lookup | never | no caption | `astellas/fy2025_full/p008` |
+| B2 | q069 | table | compare | 11 | other company | `takeda/fy2026_q1/p050` |
+| B2 | q070 | chart | compare | never | no caption | `daiichisankyo/fy2025_full/p006` |
+| B2 | q072 | table | trend | never | no caption | `astellas/fy2026_q1/p019` |
+| B2 | q079 | text | lookup | 6 | other page | `itochu/fy2026_q1/p023` |
 | C | q010 | table | compare | 57 | other page | `smfg/fy2026_q1/p001` |
 | C | q019 | chart | trend | 9 | other page | `fujitsu/fy2025_full/p044` |
 | C | q021 | text | trend | 7 | other page | `fujitsu/fy2025_full/p009` |
@@ -67,3 +93,19 @@ A miss is a question whose top 5 pages don't cover every gold group. Each miss i
 | C | q030 | diagram | compare | 21 | other page | `daiichisankyo/fy2025_full/p021` |
 | C | q033 | chart | compare | 111 | other deck | `itochu/fy2026_q1/p007` |
 | C | q040 | table | lookup | 11 | other deck | `mitsuifudosan/fy2025_full/p020` |
+| C | q045 | chart | lookup | 43 | other deck | `mufg/fy2025_full/p002` |
+| C | q053 | chart | trend | 300 | other company | `toyota/fy2026_q1/p017` |
+| C | q054 | table | compare | 9 | other company | `tokiomarine/fy2025_full/p005` |
+| D | q005 | table | lookup | 12 | other page | `mitsubishielectric/fy2025_full/p004` |
+| D | q008 | table | lookup | 10 | other page | `hitachi/fy2025_full/p009` |
+| D | q010 | table | compare | 72 | other company | `mitsuifudosan/fy2026_q1/p004` |
+| D | q015 | table | trend | 6 | other company | `smfg/fy2026_q1/p012` |
+| D | q021 | text | trend | 9 | other page | `fujitsu/fy2025_full/p067` |
+| D | q023 | chart | compare | 10 | other page | `recruit/fy2026_q1/p012` |
+| D | q029 | diagram | structure | 16 | other deck | `takeda/fy2026_q1/p036` |
+| D | q030 | diagram | compare | 7 | other page | `daiichisankyo/fy2025_full/p021` |
+| D | q033 | chart | compare | 63 | other page | `itochu/fy2025_full/p010` |
+| D | q038 | chart | trend | 8 | other page | `mitsuifudosan/fy2026_q1/p013` |
+| D | q045 | chart | lookup | 112 | other deck | `mufg/fy2025_full/p002` |
+| D | q048 | table | lookup | 7 | other page | `tokiomarine/fy2025_full/p011` |
+| D | q053 | chart | trend | 194 | other company | `daiichisankyo/fy2025_full/p012` |
