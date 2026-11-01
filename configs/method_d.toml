@@ -1,0 +1,11 @@
+# Method D: Reciprocal Rank Fusion of method A (page text) and method C (page images).
+# Each part runs with its own frozen config and cached index; only the fusion is new.
+# Fixed before the first evaluation run (2026-11-01), after the failure analysis
+# (results/failure_analysis.md) but before any fused ranking was computed. If any
+# value changes after results have been seen, note it in README.
+
+method = "D"
+# The value from the original RRF paper; not tuned here.
+rrf_k = 60
+# A and C: the two methods that index pages directly (no captioning step).
+parts = ["configs/method_a.toml", "configs/method_c.toml"]

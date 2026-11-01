@@ -3,6 +3,7 @@
 Run with:  uv run python scripts/run_eval.py --config configs/method_a.toml
            uv run python scripts/run_eval.py --config configs/method_b2.toml  (after scripts/make_captions.py)
            uv run python scripts/run_eval.py --config configs/method_c.toml
+           uv run python scripts/run_eval.py --config configs/method_d.toml  (fuses A and C)
 
 Every page is ranked for every question (search depth = number of pages), so
 MRR sees the full ranking. The page index is cached in outputs/cache/<method>/,
@@ -111,6 +112,32 @@ def build_retriever(config: dict, pages: list[dict]) -> tuple[object, dict]:
     raise ValueError(f"unknown method {method!r}")
 
 
+def prepare_retriever(config: dict, pages: list[dict], pages_sha: str) -> tuple[object, dict]:
+    """A ready-to-search retriever for config: its index loaded from the cache, or built and cached."""
+    if config["method"] == "D":
+        from multimodal_rag.retrieval.fusion import FusionRetriever
+
+        parts, notes = {}, {"parts": {}}
+        for path in config["parts"]:
+            part_config = tomllib.loads((ROOT / path).read_text(encoding="utf-8"))
+            parts[part_config["method"]], part_notes = prepare_retriever(part_config, pages, pages_sha)
+            notes["parts"][part_config["method"]] = {"config": part_config, **part_notes}
+        return FusionRetriever(parts, k=config["rrf_k"]), notes
+
+    method = config["method"]
+    retriever, notes = build_retriever(config, pages)
+    cache = ROOT / "outputs" / "cache" / f"method_{method.lower()}" / f"{cache_key(config, pages_sha)}{INDEX_SUFFIX[method]}"
+    if cache.exists():
+        retriever.load_index(cache)
+        print(f"loaded index from {cache.relative_to(ROOT)}")
+    else:
+        retriever.index(pages)
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        retriever.save_index(cache)
+        print(f"saved index to {cache.relative_to(ROOT)}")
+    return retriever, notes | {"index_cache": cache.relative_to(ROOT).as_posix()}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, required=True)
@@ -124,19 +151,9 @@ def main() -> None:
     _, questions = load_questions(QUESTIONS)
     pages_sha = file_sha256(PAGES)
 
-    retriever, notes = build_retriever(config, pages)
-
-    cache = ROOT / "outputs" / "cache" / f"method_{method.lower()}" / f"{cache_key(config, pages_sha)}{INDEX_SUFFIX[method]}"
-    if cache.exists():
-        retriever.load_index(cache)
-        print(f"loaded index from {cache.relative_to(ROOT)}")
-    else:
-        retriever.index(pages)
-        cache.parent.mkdir(parents=True, exist_ok=True)
-        retriever.save_index(cache)
-        print(f"saved index to {cache.relative_to(ROOT)}")
+    retriever, notes = prepare_retriever(config, pages, pages_sha)
     if retriever.page_ids != page_ids:
-        raise RuntimeError(f"{cache} does not match data/pages.jsonl; delete it and rerun")
+        raise RuntimeError("the cached index does not match data/pages.jsonl; delete it and rerun")
 
     results = run_retrieval(retriever, questions, set(page_ids), k=len(pages))
 

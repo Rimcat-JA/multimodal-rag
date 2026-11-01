@@ -31,20 +31,21 @@ FIGURES = RESULTS / "figures"
 # Fixed order and colour per method: a method keeps its colour even when another
 # method has no run yet. Colours are slots 1-3 of the dataviz reference palette,
 # validated for colour-vision deficiency in both themes.
-METHODS = ["A", "B2", "C"]
+METHODS = ["A", "B2", "C", "D"]
 LABELS = {
     "A": "A: page text (BGE-M3)",
     "B2": "B2: VLM figure captions (Qwen2.5-VL)",
     "C": "C: page images (ColQwen2.5)",
+    "D": "D: A + C fused (RRF)",
 }
 # "gold" (the gold pages given directly) is a reference, not a method, so it is
 # drawn in a neutral gray rather than a fourth categorical hue.
 GOLD_LABEL = "Gold pages given directly (upper bound)"
 THEMES = {
     "light": {"surface": "#fcfcfb", "text": "#0b0b0b", "muted": "#52514e", "grid": "#e4e3df",
-              "series": {"A": "#2a78d6", "B2": "#eb6834", "C": "#1baf7a", "gold": "#8a8984"}},
+              "series": {"A": "#2a78d6", "B2": "#eb6834", "C": "#1baf7a", "D": "#eda100", "gold": "#8a8984"}},
     "dark": {"surface": "#1a1a19", "text": "#f0efec", "muted": "#c3c2b7", "grid": "#3a3936",
-             "series": {"A": "#3987e5", "B2": "#d95926", "C": "#199e70", "gold": "#8a8984"}},
+             "series": {"A": "#3987e5", "B2": "#d95926", "C": "#199e70", "D": "#c98500", "gold": "#8a8984"}},
 }
 KS = (1, 3, 5)
 METRICS = [f"recall@{k}" for k in KS] + ["mrr"]
