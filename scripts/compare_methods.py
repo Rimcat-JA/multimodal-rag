@@ -7,6 +7,8 @@ from committed code (git.dirty is false), refuses to compare runs made on
 different versions of the evaluation set or page list, and writes:
     results/comparison.md                 tables (also the text version of every chart)
     results/figures/<chart>_<theme>.png   charts in light and dark versions
+If there is a clean answer run in results/answers/ made from exactly these
+retrieval runs, its answer accuracy is added as well.
 Everything is computed from run.json / per_question.csv; nothing is re-run.
 """
 
@@ -35,11 +37,14 @@ LABELS = {
     "B2": "B2: VLM figure captions (Qwen2.5-VL)",
     "C": "C: page images (ColQwen2.5)",
 }
+# "gold" (the gold pages given directly) is a reference, not a method, so it is
+# drawn in a neutral gray rather than a fourth categorical hue.
+GOLD_LABEL = "Gold pages given directly (upper bound)"
 THEMES = {
     "light": {"surface": "#fcfcfb", "text": "#0b0b0b", "muted": "#52514e", "grid": "#e4e3df",
-              "series": {"A": "#2a78d6", "B2": "#eb6834", "C": "#1baf7a"}},
+              "series": {"A": "#2a78d6", "B2": "#eb6834", "C": "#1baf7a", "gold": "#8a8984"}},
     "dark": {"surface": "#1a1a19", "text": "#f0efec", "muted": "#c3c2b7", "grid": "#3a3936",
-             "series": {"A": "#3987e5", "B2": "#d95926", "C": "#199e70"}},
+             "series": {"A": "#3987e5", "B2": "#d95926", "C": "#199e70", "gold": "#8a8984"}},
 }
 KS = (1, 3, 5)
 METRICS = [f"recall@{k}" for k in KS] + ["mrr"]
@@ -55,6 +60,26 @@ def latest_clean_run(method: str) -> Path | None:
 def load_ranks(run_dir: Path) -> dict[str, int | None]:
     with (run_dir / "per_question.csv").open(encoding="utf-8") as f:
         return {row["qid"]: int(row["rank"]) if row["rank"] else None for row in csv.DictReader(f)}
+
+
+def latest_answer_run(runs: dict[str, Path]) -> Path | None:
+    """Latest clean answer run whose retrieval runs are exactly the ones being compared."""
+    wanted = {m: d.relative_to(ROOT).as_posix() for m, d in runs.items()}
+    for path in sorted((RESULTS / "answers").glob("*/run.json"), reverse=True):
+        meta = json.loads(path.read_text(encoding="utf-8"))
+        if not meta["git"]["dirty"] and meta["config"]["runs"] == wanted:
+            return path.parent
+    return None
+
+
+def load_answers(run_dir: Path) -> dict[str, dict[str, dict]]:
+    """condition -> qid -> {"correct": bool, "answerable": bool}"""
+    out: dict[str, dict[str, dict]] = {}
+    with (run_dir / "per_question.csv").open(encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            out.setdefault(row["condition"], {})[row["qid"]] = {
+                "correct": row["correct"] == "True", "answerable": row["answerable"] == "True"}
+    return out
 
 
 def scores(ranks: list[int | None]) -> dict[str, float]:
@@ -135,6 +160,24 @@ def main() -> None:
                                          [answerable_within(ranks[m][q], 5) for q in qids]),
         }
 
+    answer_dir = latest_answer_run(runs)
+    if answer_dir:
+        answer_meta = json.loads((answer_dir / "run.json").read_text(encoding="utf-8"))
+        if answer_meta["eval_set"]["sha256"] != metas["A"]["eval_set"]["sha256"]:
+            raise SystemExit(f"{answer_dir} uses a different eval_set version")
+        answers = load_answers(answer_dir)
+        conditions = [*runs, "gold"]
+        for c in conditions:
+            if sorted(answers[c]) != sorted(qids):
+                raise SystemExit(f"answer run {answer_dir}: condition {c} doesn't cover exactly the questions")
+        acc = {c: sum(answers[c][q]["correct"] for q in qids) / len(qids) for c in conditions}
+        for c in conditions:
+            if abs(acc[c] - answer_meta["summary"][c]["accuracy"]) > 1e-12:
+                raise SystemExit(f"answers {c}: recomputed {acc[c]} != run.json {answer_meta['summary'][c]['accuracy']}")
+        answer_diffs = {c: paired_bootstrap([float(answers["A"][q]["correct"]) for q in qids],
+                                            [float(answers[c][q]["correct"]) for q in qids])
+                        for c in conditions if c != "A"}
+
     # ---- tables ----
     lines = [
         "# Method comparison",
@@ -162,6 +205,23 @@ def main() -> None:
                   "|---|---|" + "---|" * (2 * len(runs))]
         lines += [f"| {g} | {row['n']} | " + " | ".join(f"{row[m]['recall@5']:.2f}" for m in runs) + " | "
                   + " | ".join(f"{row[m]['mrr']:.3f}" for m in runs) + " |" for g, row in table.items()]
+    if answer_dir:
+        gen, grader = answer_meta["config"]["generator"], answer_meta["config"]["grader"]
+        lines += ["", "## Answer accuracy", "",
+                  f"Answer run `{answer_dir.relative_to(ROOT).as_posix()}` (commit `{answer_meta['git']['commit'][:7]}`). "
+                  f"`{gen['model']}` ({gen['provider']}) answers from the top {answer_meta['config']['top_k']} pages of each "
+                  f"retrieval run above, or from the gold pages. Numeric questions are graded by rule; text questions by "
+                  f"`{grader['model']}` ({grader['provider']}).", "",
+                  "| Condition | Accuracy | − A [95% interval] | Accuracy when the pages cover every gold group | "
+                  "Accuracy when they don't |", "|---|---|---|---|---|"]
+        for c in conditions:
+            label = LABELS.get(c, GOLD_LABEL)
+            diff = "" if c == "A" else "{:+.3f} [{:+.3f}, {:+.3f}]".format(*answer_diffs[c])
+            cells = []
+            for flag in (True, False):
+                group = [answers[c][q]["correct"] for q in qids if answers[c][q]["answerable"] == flag]
+                cells.append(f"{sum(group) / len(group):.3f} (n={len(group)})" if group else "–")
+            lines.append(f"| {label} | {acc[c]:.3f} | {diff} | {cells[0]} | {cells[1]} |")
     RESULTS.mkdir(exist_ok=True)
     (RESULTS / "comparison.md").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
@@ -201,6 +261,21 @@ def main() -> None:
             ax.invert_yaxis()
             ax.set_title("MRR difference from A, with 95% paired bootstrap interval", color=theme["text"], loc="left")
             save(fig, "mrr_diff_vs_a", theme_name, theme)
+
+        if answer_dir:
+            fig, ax = plt.subplots(figsize=(8, 3.6))
+            style_axes(ax, theme)
+            ax.bar(range(len(conditions)), [acc[c] for c in conditions], 0.6,
+                   color=[theme["series"][c] for c in conditions], edgecolor=theme["surface"], linewidth=2)
+            for i, c in enumerate(conditions):
+                ax.annotate(f"{acc[c]:.3f}", (i, acc[c]), xytext=(0, 4), textcoords="offset points",
+                            ha="center", color=theme["text"])
+            ax.set_xticks(range(len(conditions)), [LABELS.get(c, GOLD_LABEL).replace(" (", "\n(") for c in conditions],
+                          color=theme["text"])
+            ax.set_ylim(0, 1.05)
+            ax.set_title(f"Answer accuracy on {len(qids)} questions (top {answer_meta['config']['top_k']} pages)",
+                         color=theme["text"], loc="left")
+            save(fig, "answer_accuracy", theme_name, theme)
 
     print((RESULTS / "comparison.md").read_text(encoding="utf-8"))
 

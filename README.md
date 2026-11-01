@@ -6,7 +6,7 @@ Multimodal RAG over financial-report charts and tables. The goal is to compare t
 - **B. Figure captioning**: a vision LLM reads each whole page image and returns one structured description per chart or table (type, title, unit, Markdown table, summary), which is then embedded. B2 uses a local Qwen2.5-VL. B1 (the same with the Claude API) was planned but dropped by the developer's decision, so only B2 was run.
 - **C. Page-image retrieval**: ColQwen2.5 multi-vector embeddings with late interaction (MaxSim)
 
-> Status: retrieval for A, B2 and C is evaluated (below). Answer generation and grading are next. Data: 15 companies across 5 industries, 30 decks, 1,429 pages. Sources are listed in [docs/sources.csv](docs/sources.csv). The PDFs themselves are not redistributed.
+> Status: retrieval and answer generation for A, B2 and C are evaluated (below). The developer's check of the LLM grading is pending. Data: 15 companies across 5 industries, 30 decks, 1,429 pages. Sources are listed in [docs/sources.csv](docs/sources.csv). The PDFs themselves are not redistributed.
 
 ## Retrieval results
 
@@ -45,12 +45,51 @@ Per-evidence and per-author tables, and the exact runs used (timestamp and commi
 
 Each method's indexing cost differs a lot. B2 needs one generation call per page before anything can be embedded. Captioning all 1,429 pages with `qwen2.5vl:7b` on the RX 9070 XT took **5.2 hours, about 13 s per page**. Generation is the bottleneck: a median of about 400 output tokens per page, each needing a full forward pass. Embedding the resulting 2,130 figure descriptions with BGE-M3 took about 9 seconds. Captions are cached per page, so adding a new deck only costs captioning for that deck's pages. A and C embed each page directly in a single forward pass.
 
+## Answer results
+
+`google/gemini-3.8-flash` answers each question from the top 5 pages of each retrieval run. A fourth condition gives it the gold pages directly, as an upper bound on reading. The model sees only the question and the images, labelled ページ1–5. It does not see page ids, because those name the company and the deck. Settings and prompts are in [configs/answer.toml](configs/answer.toml).
+
+Numeric questions (32) are graded by rule: the number must equal the printed value, and the unit must be the same. Other spellings of the same unit count as the same (e.g. ポイント = pt), but a different scale never does. Text questions (8) are graded by `deepseek/deepseek-v4.1-flash-1017` against the reference answer. Three different models write, answer and grade the questions: Claude writes them, Gemini answers and DeepSeek grades. This keeps a model from grading its own work. Both API models are called through OpenRouter, each pinned to its maker's own provider with fallbacks off. The provider that actually served each reply is recorded. The full run (160 answers) cost $0.96.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="results/figures/answer_accuracy_dark.png">
+  <img alt="Answer accuracy: A 0.575, B2 0.575, C 0.700, gold pages 0.950." src="results/figures/answer_accuracy_light.png">
+</picture>
+
+| Condition | Accuracy | − A [95% interval] | When the 5 pages cover every gold group | When they don't |
+|---|---|---|---|---|
+| A: page text | 0.575 | | 0.875 (n=24) | 0.125 (n=16) |
+| B2: figure captions | 0.575 | +0.000 [−0.150, +0.150] | 0.952 (n=21) | 0.158 (n=19) |
+| C: page images | **0.700** | +0.125 [−0.025, +0.275] | 0.903 (n=31) | 0.000 (n=9) |
+| Gold pages (upper bound) | 0.950 | +0.375 [+0.225, +0.525] | 0.950 (n=40) | – |
+
+- **Retrieval decides the answer.** When the retrieved pages contain the evidence, Gemini answers about 90% of questions correctly, whichever method found the pages. When they don't, it almost never does. So the differences between methods come from retrieval, not from reading.
+- **C still leads, but less clearly.** Its retrieval advantage carries through, at +0.125 accuracy over A, but this interval crosses zero. Each question is right or wrong, and 40 such outcomes give a much noisier measure than a rank-based metric like MRR.
+- **Most of the remaining gap is retrieval.** With the gold pages, accuracy is 0.950. Both misses there are grading-format misses, not reading errors (see below).
+- **Rule grading misses some correct answers.** 10 rule-graded answers marked wrong contain the gold number in their text. In 9 of them the answer is right in substance. (C on q004 really is wrong: it gives the forecast and mentions the gold figure only as last year's actual.) The 9 break down as follows:
+  - q031 asks for a trend, but its gold value is a single number (518). The model described the trend and left the single-number field empty. This happened in all four conditions.
+  - q036 asks "how much did it decrease". The model answered 73, while the gold value is −73. This happened in all four conditions.
+  - q034 under A, and q038 under B2, had a missing value or unit.
+
+  These misses lower every condition by a similar amount, so the comparison between methods changes little. The absolute accuracies are slightly understated, though. q031 and q036 are flagged for the developer: the evaluation set is protected, so they were not edited.
+
+### Changes made after the first answer run
+
+Two grading problems showed up in the first full run. Both were fixed before the results above were produced, and every number above comes from the fixed version. Generation was not changed; all answers come from the cache of the first run.
+
+1. **Judge prompt.** The JSON example in DeepSeek's prompt was not valid JSON (`"correct": true または false`), and one reply came back without the `correct` field. The example was rewritten as valid JSON, and all text questions were regraded.
+2. **Unit spellings.** Two answers had the right number but a different spelling of the unit (`ポイント` for `pt`, `millions of dollars` for `百万ドル`). The developer chose to accept other spellings of the same unit. The table of spellings was written from the units in the evaluation set, before the rest of the results were seen. It never maps one scale to another.
+
+Following `eval/README.md`, part of the LLM grading is checked by eye: `uv run python scripts/judge_check.py export` lists all 32 DeepSeek judgements in `eval/judge_check.csv`, and `agree` reports the agreement once they are labelled.
+
 ## Limitations
 
 - **Caption loops (B2).** 125 of 1,429 pages (8.7%) got no usable caption. Ollama aborted 23 of them with "token repeat limit reached". The other 102 hit the 4,096-token output cap, so their JSON was cut off. Of those, 100 ended in a repeated string, so they were loops too, not genuinely long tables. Failed pages are kept as "no figures" and not retried, since with temperature 0 and a fixed seed a retry fails the same way. These failures hit 7 of the 77 gold pages and make 4 questions unanswerable for B2. Adding a repetition penalty and recaptioning would probably help. It was not done, so the result above is for the settings as they were frozen.
 - **Hallucinated figures on low-text pages (B2).** On section-divider pages that show only a heading, the model sometimes invents charts. The prompt was revised once, from v1 to v2, before the full run. That revision was checked only on pages that are not gold pages for any question. v2 still does this on some divider pages, and it was frozen anyway rather than tuned further.
 - **Pages without figures are invisible to B2.** By design, B2 indexes only figure descriptions. A page the model judges to have no figures can't be retrieved. In this run every gold page without figures was a captioning failure, so this didn't cost a question by itself, but it would for text-only evidence.
 - **C uses an English-trained retriever.** `vidore/colqwen2.5-v0.2` is trained mainly on English documents, and the queries here are Japanese. It still did best, but it was not tuned for this setting.
+- **Answers can't be regenerated identically.** Gemini 3.x ignores temperature, and no dated model id exists for `gemini-3.8-flash`. Reproducibility therefore rests on the cached replies, together with the provider and model recorded for each reply.
+- **The upper bound sees more pages for some questions.** The gold condition passes every gold page, which is up to 8 pages for q002. The retrieval conditions pass 5.
 - **Small evaluation set.** 40 questions, of which 32 were written by Claude and 8 by the developer. Per-group counts are small. Claude wrote most questions, so no Claude model generates or grades answers in this project.
 
 ## Reproducing
@@ -60,6 +99,7 @@ uv run python scripts/run_eval.py --config configs/method_a.toml
 uv run python scripts/make_captions.py --config configs/method_b2.toml   # B2 only; resumable, about 5 h
 uv run python scripts/run_eval.py --config configs/method_b2.toml
 uv run python scripts/run_eval.py --config configs/method_c.toml
+uv run python scripts/run_answers.py --config configs/answer.toml   # needs OPENROUTER_API_KEY in .env
 uv run python scripts/compare_methods.py
 ```
 

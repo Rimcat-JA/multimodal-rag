@@ -43,3 +43,14 @@ Few questions per group: treat differences here as observations, not conclusions
 |---|---|---|---|---|---|---|---|
 | claude | 32 | 0.62 | 0.50 | 0.72 | 0.482 | 0.400 | 0.615 |
 | human | 8 | 0.50 | 0.62 | 1.00 | 0.459 | 0.536 | 0.938 |
+
+## Answer accuracy
+
+Answer run `results/answers/20261101-145823` (commit `686e52c`). `google/gemini-3.8-flash` (google-ai-studio) answers from the top 5 pages of each retrieval run above, or from the gold pages. Numeric questions are graded by rule; text questions by `deepseek/deepseek-v4.1-flash-1017` (deepseek).
+
+| Condition | Accuracy | − A [95% interval] | Accuracy when the pages cover every gold group | Accuracy when they don't |
+|---|---|---|---|---|
+| A: page text (BGE-M3) | 0.575 |  | 0.875 (n=24) | 0.125 (n=16) |
+| B2: VLM figure captions (Qwen2.5-VL) | 0.575 | +0.000 [-0.150, +0.150] | 0.952 (n=21) | 0.158 (n=19) |
+| C: page images (ColQwen2.5) | 0.700 | +0.125 [-0.025, +0.275] | 0.903 (n=31) | 0.000 (n=9) |
+| Gold pages given directly (upper bound) | 0.950 | +0.375 [+0.225, +0.525] | 0.950 (n=40) | – |
