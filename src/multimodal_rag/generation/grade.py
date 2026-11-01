@@ -2,8 +2,10 @@
 
 Numeric questions (answer_value set) are graded by rule, as eval/README.md
 defines: the number must equal the printed value (15 is wrong when 15.2 is
-printed) and the unit must be the same. No unit conversion: "0.4兆円" for a
-gold "4000億円" counts as wrong, and such cases are reported separately.
+printed) and the unit must be the same. Other spellings of the same unit
+count as the same (UNIT_ALIASES, e.g. ポイント for pt), but there is no unit
+conversion: "0.4兆円" for a gold "4000億円" counts as wrong, and such cases are
+reported separately.
 
 Text questions are graded by DeepSeek (through OpenRouter), which
 compares the answer with the reference answer. Neither Claude (who wrote the
@@ -29,8 +31,27 @@ def values_match(predicted: str, gold: str) -> bool:
         return False
 
 
+# Other spellings of the units that appear in eval/questions.csv, written before
+# the full answer run (2026-11-01) and decided by the developer. Only the same unit
+# spelled differently; never a different scale (百万円 is not 億円).
+UNIT_ALIASES = {
+    "pt": ["ポイント", "%ポイント", "point", "points", "pp"],
+    "%": ["パーセント", "percent"],
+    "百万ドル": ["百万米ドル", "百万us$", "百万usドル", "millionsofdollars", "milliondollars", "millionusd",
+               "usdmillion", "us$million", "$million"],
+    "us$/bbl": ["ドル/バレル", "us$/バレル", "usd/bbl", "$/bbl", "usドル/バレル", "米ドル/バレル"],
+    "倍": ["x", "times"],
+    "円": ["yen"],
+}
+
+
 def normalize_unit(unit: str) -> str:
-    return unicodedata.normalize("NFKC", unit).strip().replace(" ", "").lower()
+    """Width, case and spaces removed, then mapped to the canonical spelling."""
+    u = unicodedata.normalize("NFKC", unit).strip().replace(" ", "").lower()
+    for canonical, aliases in UNIT_ALIASES.items():
+        if u in aliases:
+            return canonical
+    return u
 
 
 def units_match(predicted: str, gold: str) -> bool:

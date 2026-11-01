@@ -129,8 +129,13 @@ def main() -> None:
         return
 
     def by(column):
-        return {c: {v: accuracy([r for r in rows if r["condition"] == c and r[column] == v])
-                    for v in sorted({r[column] for r in rows})} for c in conditions}
+        """Accuracy and n per value of column, per condition; empty groups are left out
+        (e.g. under "gold" every question is answerable)."""
+        out = {}
+        for c in conditions:
+            groups = {v: [r for r in rows if r["condition"] == c and r[column] == v] for v in {r[column] for r in rows}}
+            out[c] = {str(v): {"accuracy": accuracy(g), "n": len(g)} for v, g in sorted(groups.items()) if g}
+        return out
 
     usage = Counter()
     for r in rows:

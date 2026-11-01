@@ -46,6 +46,14 @@ def test_values_do_not_match(pred, gold):
     assert not values_match(pred, gold)
 
 
+def test_units_match_accepts_other_spellings_of_the_same_unit():
+    assert units_match("ポイント", "pt")
+    assert units_match("millions of dollars", "百万ドル")
+    assert units_match("ドル／バレル", "US$/BBL")  # full-width slash is normalized first
+    assert not units_match("百万円", "百万ドル")
+    assert not units_match("億円", "兆円")       # a different scale is never the same unit
+
+
 def test_units_match_ignores_width_case_and_spaces():
     assert units_match("億円", "億円")
     assert units_match("US$/bbl", "US$/BBL")
