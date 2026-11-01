@@ -1,0 +1,108 @@
+{
+  "method": "B2",
+  "config": {
+    "method": "B2",
+    "caption": {
+      "ollama_url": "http://127.0.0.1:11434",
+      "model": "qwen2.5vl:7b",
+      "model_digest": "5ced39dfa4ba",
+      "temperature": 0,
+      "seed": 0,
+      "num_ctx": 8192,
+      "num_predict": 4096,
+      "prompt": "この画像は、日本企業の決算説明資料の1ページです。ページの中にあるグラフ・表・図を、1つずつ書き出してください。\n\n規則：\n- 画像に書かれている内容だけを書く。画像にない数値や項目を作らない。\n- 表紙、目次、章の区切り（見出しだけのページ）、注意事項、文章だけのページなど、グラフ・表・図がないページは \"figures\" を空の配列 [] にする。\n- 背景の模様、装飾の線、ロゴ、写真はグラフ・表・図ではない。\n- ページの見出しや注記も手がかりにして、図表が何を示しているかを書く。\n\n各図表の項目：\n- type: \"chart\"（グラフ）、\"table\"（表）、\"diagram\"（図・流れ図・体制図など）のどれか\n- title: 図表の見出し。図表に見出しがなければページの見出し\n- unit: 図表に書かれた単位（例：億円、百万円、%）。書かれていなければ空の文字列\n- table_markdown: 図表の項目と数値を Markdown の表にしたもの。1行ごとに改行し、数値は表示どおりに写す。数値のない図は空の文字列\n- summary: 図表が示していることを日本語で2〜3文\n"
+    },
+    "embed": {
+      "model": "BAAI/bge-m3",
+      "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+      "torch_dtype": "float16",
+      "max_seq_length": 8192,
+      "batch_size": 4
+    }
+  },
+  "search_depth": 1429,
+  "timestamp": "2026-11-01T13:16:47",
+  "eval_set": {
+    "path": "eval/questions.csv",
+    "sha256": "f18c5ee9a4268ec7848ac8da7ca67a34f09e674e5029ac2451dae5768551840f",
+    "n": 40
+  },
+  "pages": {
+    "path": "data/pages.jsonl",
+    "sha256": "6fb6ef5446e192917e968b8b2f0d5453aae5012a048f7205f8059b27bf22ffc2",
+    "n": 1429
+  },
+  "captions": {
+    "cache": "outputs/cache/captions_b2/9a2a2a538d0eb615",
+    "n_figures": 2130,
+    "n_pages_with_figures": 1122,
+    "n_unparseable": 125,
+    "n_stopped_at_length": 102,
+    "max_tokens": 2161,
+    "n_truncated": 0
+  },
+  "git": {
+    "commit": "50a68011e3004c40a4f23aeda62df51e6aad12a3",
+    "dirty": false
+  },
+  "versions": {
+    "torch": "2.14.0+rocm10.1.0",
+    "sentence-transformers": "6.2.0",
+    "transformers": "5.22.1",
+    "peft": "0.21.2",
+    "python": "3.12.10"
+  },
+  "summary": {
+    "n": 40,
+    "recall@1": 0.325,
+    "recall@3": 0.475,
+    "recall@5": 0.525,
+    "mrr": 0.4271110705648649
+  },
+  "by_author": {
+    "claude": {
+      "n": 32,
+      "recall@1": 0.28125,
+      "recall@3": 0.46875,
+      "recall@5": 0.5,
+      "mrr": 0.3998640537233226
+    },
+    "human": {
+      "n": 8,
+      "recall@1": 0.5,
+      "recall@3": 0.5,
+      "recall@5": 0.625,
+      "mrr": 0.5360991379310345
+    }
+  },
+  "by_evidence": {
+    "chart": {
+      "n": 16,
+      "recall@1": 0.3125,
+      "recall@3": 0.375,
+      "recall@5": 0.4375,
+      "mrr": 0.37929471531121806
+    },
+    "diagram": {
+      "n": 6,
+      "recall@1": 0.3333333333333333,
+      "recall@3": 0.8333333333333334,
+      "recall@5": 0.8333333333333334,
+      "mrr": 0.5961538461538461
+    },
+    "table": {
+      "n": 12,
+      "recall@1": 0.25,
+      "recall@3": 0.3333333333333333,
+      "recall@5": 0.4166666666666667,
+      "mrr": 0.3310392472798915
+    },
+    "text": {
+      "n": 6,
+      "recall@1": 0.5,
+      "recall@3": 0.6666666666666666,
+      "recall@5": 0.6666666666666666,
+      "mrr": 0.5777222222222221
+    }
+  }
+}
