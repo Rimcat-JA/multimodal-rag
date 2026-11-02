@@ -1,0 +1,17 @@
+# Method C-ft trained with [train] seed = 43 instead of 42, everything else the same
+# (scripts/finetune_colqwen.py train --seed 43, results/finetune/20261102-180126).
+# Used only to measure how much C-ft varies between training runs
+# (scripts/compare_seeds.py); the READMEs' C-ft is configs/method_c_ft.toml.
+# Fixed before evaluation (2026-11-02); evaluated once.
+
+method = "C-ft"
+# Kept apart from results/method_c-ft/ so compare_methods.py keeps reading the seed-42 run.
+results_dir = "results/c-ft_seeds/seed43"
+# LoRA adapters on vidore/colqwen2.5-base, loaded from the local Hugging Face cache at
+# snapshot 92908120384b7a2110c5beda3ab29cbdb2c08e49 (the same base as configs/method_c_ft.toml).
+model_path = "outputs/models/colqwen_ft/20261102-180126/final"
+model_sha256 = "4556d438256f31fe0d646a369c90cea48a4b5d20b596192e91bb50163d9a2bc6"
+torch_dtype = "bfloat16"
+# The same as configs/method_c.toml (they don't change results).
+batch_size = 2
+chunk_pages = 16
