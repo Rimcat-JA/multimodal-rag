@@ -16,6 +16,9 @@ A = "results/method_a/20261101-160233"
 B2 = "results/method_b2/20261101-160250"
 C = "results/method_c/20261101-160315"
 D = "results/method_d/20261101-160344"
+# Added 2026-11-02 after the fine-tuned model was evaluated (configs/method_c_ft.toml).
+# Answers for pages already given in an earlier condition come from the cache.
+C-ft = "results/method_c-ft/20261102-120112"
 
 # Both models are called through OpenRouter, each pinned to its maker's own
 # provider (no fallback to other providers or quantized copies).

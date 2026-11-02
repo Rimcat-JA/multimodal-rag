@@ -29,23 +29,26 @@ RESULTS = ROOT / "results"
 FIGURES = RESULTS / "figures"
 
 # Fixed order and colour per method: a method keeps its colour even when another
-# method has no run yet. Colours are slots 1-3 of the dataviz reference palette,
+# method has no run yet. Colours are slots 1-5 of the dataviz reference palette,
 # validated for colour-vision deficiency in both themes.
-METHODS = ["A", "B2", "C", "D"]
+METHODS = ["A", "B2", "C", "D", "C-ft"]
 LABELS = {
     "A": "A: page text (BGE-M3)",
     "B2": "B2: VLM figure captions (Qwen2.5-VL)",
     "C": "C: page images (ColQwen2.5)",
     "D": "D: A + C fused (RRF)",
+    "C-ft": "C-ft: page images (ColQwen2.5 fine-tuned)",
 }
+# D and C-ft are both built on C, so each is also compared with C itself.
+VS_C = ["D", "C-ft"]
 # "gold" (the gold pages given directly) is a reference, not a method, so it is
 # drawn in a neutral gray rather than a fourth categorical hue.
 GOLD_LABEL = "Gold pages given directly (upper bound)"
 THEMES = {
     "light": {"surface": "#fcfcfb", "text": "#0b0b0b", "muted": "#52514e", "grid": "#e4e3df",
-              "series": {"A": "#2a78d6", "B2": "#eb6834", "C": "#1baf7a", "D": "#eda100", "gold": "#8a8984"}},
+              "series": {"A": "#2a78d6", "B2": "#eb6834", "C": "#1baf7a", "D": "#eda100", "C-ft": "#e87ba4", "gold": "#8a8984"}},
     "dark": {"surface": "#1a1a19", "text": "#f0efec", "muted": "#c3c2b7", "grid": "#3a3936",
-             "series": {"A": "#3987e5", "B2": "#d95926", "C": "#199e70", "D": "#c98500", "gold": "#8a8984"}},
+             "series": {"A": "#3987e5", "B2": "#d95926", "C": "#199e70", "D": "#c98500", "C-ft": "#d55181", "gold": "#8a8984"}},
 }
 KS = (1, 3, 5)
 METRICS = [f"recall@{k}" for k in KS] + ["mrr"]
@@ -199,16 +202,21 @@ def main() -> None:
                   "| Method | MRR − A [95% interval] | Recall@5 − A [95% interval] |", "|---|---|---|"]
         lines += [f"| {LABELS[m]} | " + " | ".join(f"{d[0]:+.3f} [{d[1]:+.3f}, {d[2]:+.3f}]" for d in (diffs[m]["mrr"], diffs[m]["recall@5"]))
                   + " |" for m in diffs]
-    if "C" in runs and "D" in runs:
-        # D fuses C with A, so the question that matters for D is whether it beats C alone.
-        d_vs_c = {"mrr": paired_bootstrap([reciprocal_rank(ranks["C"][q]) for q in qids],
-                                          [reciprocal_rank(ranks["D"][q]) for q in qids]),
-                  "recall@5": paired_bootstrap([answerable_within(ranks["C"][q], 5) for q in qids],
-                                               [answerable_within(ranks["D"][q], 5) for q in qids])}
-        lines += ["", "## D compared with C (same paired bootstrap)", "",
-                  "| | MRR − C [95% interval] | Recall@5 − C [95% interval] |", "|---|---|---|",
-                  f"| {LABELS['D']} | " + " | ".join("{:+.3f} [{:+.3f}, {:+.3f}]".format(*d_vs_c[x]) for x in ("mrr", "recall@5"))
-                  + " |"]
+    vs_c = [m for m in VS_C if "C" in runs and m in runs]
+    if vs_c:
+        # D fuses C with A and C-ft retrains C's model, so the question that matters
+        # for each is whether it beats C alone.
+        header = "| | MRR − C [95% interval] | Recall@1 − C [95% interval] | Recall@5 − C [95% interval] |"
+        if answer_dir:
+            header += " Answer accuracy − C [95% interval] |"
+        lines += ["", "## Compared with C (same paired bootstrap)", "", header, "|---" * header.count(" | ") + "|---|"]
+        for m in vs_c:
+            cells = [paired_bootstrap([fn(ranks["C"][q]) for q in qids], [fn(ranks[m][q]) for q in qids])
+                     for fn in (reciprocal_rank, lambda r: answerable_within(r, 1), lambda r: answerable_within(r, 5))]
+            if answer_dir:
+                cells.append(paired_bootstrap([float(answers["C"][q]["correct"]) for q in qids],
+                                              [float(answers[m][q]["correct"]) for q in qids]))
+            lines.append(f"| {LABELS[m]} | " + " | ".join("{:+.3f} [{:+.3f}, {:+.3f}]".format(*d) for d in cells) + " |")
     for title, table in (("By evidence type", by_evidence), ("By question author", by_author)):
         lines += ["", f"## {title}", "",
                   "Few questions per group: treat differences here as observations, not conclusions.", "",
@@ -274,7 +282,7 @@ def main() -> None:
             save(fig, "mrr_diff_vs_a", theme_name, theme)
 
         if answer_dir:
-            fig, ax = plt.subplots(figsize=(9, 4))
+            fig, ax = plt.subplots(figsize=(10, 4))
             style_axes(ax, theme)
             ax.bar(range(len(conditions)), [acc[c] for c in conditions], 0.6,
                    color=[theme["series"][c] for c in conditions], edgecolor=theme["surface"], linewidth=2)

@@ -1,0 +1,88 @@
+{
+  "method": "C-ft",
+  "config": {
+    "method": "C-ft",
+    "model_path": "outputs/models/colqwen_ft/20261102-073228/final",
+    "model_sha256": "ea9f95e0aabd8d7559067819abce9567f255d6c5a9a165b28c57a8fc925a270d",
+    "torch_dtype": "bfloat16",
+    "batch_size": 2,
+    "chunk_pages": 16
+  },
+  "search_depth": 1429,
+  "timestamp": "2026-11-02T12:01:12",
+  "eval_set": {
+    "path": "eval/questions.csv",
+    "sha256": "21ab091666011749dc2d42c24797f7865367f8bd99ac7d22a445026e76d59bbe",
+    "n": 80
+  },
+  "pages": {
+    "path": "data/pages.jsonl",
+    "sha256": "6fb6ef5446e192917e968b8b2f0d5453aae5012a048f7205f8059b27bf22ffc2",
+    "n": 1429
+  },
+  "index_cache": "outputs/cache/method_c-ft/d6a0f16e9ffc09fd.pt",
+  "git": {
+    "commit": "3e4dfba34b012ec22546811332949652c0971351",
+    "dirty": false
+  },
+  "versions": {
+    "torch": "2.14.0+rocm10.1.0",
+    "sentence-transformers": "6.2.0",
+    "transformers": "5.22.1",
+    "peft": "0.21.2",
+    "python": "3.12.10"
+  },
+  "summary": {
+    "n": 80,
+    "recall@1": 0.6875,
+    "recall@3": 0.8125,
+    "recall@5": 0.9,
+    "mrr": 0.7718687484930347
+  },
+  "by_author": {
+    "claude": {
+      "n": 72,
+      "recall@1": 0.6666666666666666,
+      "recall@3": 0.7916666666666666,
+      "recall@5": 0.8888888888888888,
+      "mrr": 0.7557800909181864
+    },
+    "human": {
+      "n": 8,
+      "recall@1": 0.875,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "mrr": 0.9166666666666666
+    }
+  },
+  "by_evidence": {
+    "chart": {
+      "n": 32,
+      "recall@1": 0.65625,
+      "recall@3": 0.78125,
+      "recall@5": 0.90625,
+      "mrr": 0.7436378394748705
+    },
+    "diagram": {
+      "n": 12,
+      "recall@1": 0.6666666666666666,
+      "recall@3": 0.75,
+      "recall@5": 0.75,
+      "mrr": 0.7292152292152293
+    },
+    "table": {
+      "n": 24,
+      "recall@1": 0.7083333333333334,
+      "recall@3": 0.8333333333333334,
+      "recall@5": 0.9583333333333334,
+      "mrr": 0.7941520467836257
+    },
+    "text": {
+      "n": 12,
+      "recall@1": 0.75,
+      "recall@3": 0.9166666666666666,
+      "recall@5": 0.9166666666666666,
+      "mrr": 0.8452380952380952
+    }
+  }
+}
