@@ -12,6 +12,8 @@ As in method A, the encoder is passed in so tests can use a small fake.
 from pathlib import Path
 from typing import Protocol
 
+import hashlib
+
 import torch
 from PIL import Image
 from sentence_transformers.util import maxsim
@@ -29,15 +31,35 @@ class MultiVectorEncoderLike(Protocol):
     def encode_query(self, inputs: list[str], **kwargs) -> list[torch.Tensor]: ...
 
 
-def load_encoder(config: dict):
-    """Load the MultiVectorEncoder described by configs/method_c.toml onto the GPU."""
+def model_dir_sha256(model_dir: Path) -> str:
+    """Fingerprint of a saved model directory: every file's relative path and contents."""
+    files = sorted(p for p in model_dir.rglob("*") if p.is_file())
+    return hashlib.sha256(b"".join(p.relative_to(model_dir).as_posix().encode()
+                                   + hashlib.sha256(p.read_bytes()).digest() for p in files)).hexdigest()
+
+
+def load_encoder(config: dict, root: Path | None = None):
+    """Load the MultiVectorEncoder described by configs/method_c.toml onto the GPU.
+
+    A Hugging Face model is pinned by `revision`. A fine-tuned model saved on disk
+    (configs/method_c_ft.toml) is given by `model_path` under `root` and checked
+    against `model_sha256`, so a retrained model is never evaluated by mistake.
+    """
     from sentence_transformers import MultiVectorEncoder
 
+    if "model_path" in config:
+        model_dir = root / config["model_path"]
+        digest = model_dir_sha256(model_dir)
+        if digest != config["model_sha256"]:
+            raise ValueError(f"{model_dir} has sha256 {digest}, not {config['model_sha256']}")
+        source, kwargs = str(model_dir), {}
+    else:
+        source, kwargs = config["model"], {"revision": config["revision"]}
     return MultiVectorEncoder(
-        config["model"],
-        revision=config["revision"],
+        source,
         device="cuda",  # ROCm builds of torch also use the "cuda" device name
         model_kwargs={"torch_dtype": getattr(torch, config["torch_dtype"])},
+        **kwargs,
     )
 
 

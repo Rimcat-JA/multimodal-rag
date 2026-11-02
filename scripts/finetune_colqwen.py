@@ -5,7 +5,8 @@ Run with:  uv run python scripts/finetune_colqwen.py mine  --config configs/fine
 
 mine   indexes data/train/pages.jsonl with the base model (cached in outputs/cache/finetune/)
        and writes data/train/triplets.jsonl: each training query with its positive page and
-       one hard negative (src/multimodal_rag/finetune/data.py).
+       one hard negative (src/multimodal_rag/finetune/data.py). Queries generated for more
+       than one page are dropped first.
 train  trains the LoRA adapters with in-batch + hard negatives (CachedMultiVectorMultipleNegatives-
        RankingLoss), evaluates MRR@10 on the validation companies' queries against all their pages,
        keeps the best checkpoint, and saves it to outputs/models/colqwen_ft/<timestamp>/.
@@ -16,7 +17,6 @@ The evaluation set (data/pages.jsonl, eval/questions.csv) is never read here.
 
 import argparse
 import csv
-import hashlib
 import json
 import platform
 import random
@@ -28,7 +28,13 @@ from pathlib import Path
 from run_eval import git_state  # scripts/ is on sys.path when this file is run
 
 from multimodal_rag.eval.runner import file_sha256
-from multimodal_rag.finetune.data import company_of, overlapping_companies, pick_hard_negative, split_by_company
+from multimodal_rag.finetune.data import (
+    company_of,
+    drop_ambiguous_queries,
+    overlapping_companies,
+    pick_hard_negative,
+    split_by_company,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 TRAIN = ROOT / "data" / "train"
@@ -65,7 +71,9 @@ def load_base(config: dict):
 def mine(config: dict) -> None:
     from multimodal_rag.retrieval.page_image import PageImageRetriever
 
-    pages, queries = load_jsonl(PAGES), load_jsonl(QUERIES)
+    pages, all_queries = load_jsonl(PAGES), load_jsonl(QUERIES)
+    queries = drop_ambiguous_queries(all_queries)
+    print(f"{len(all_queries) - len(queries)} queries dropped: the same text was generated for more than one page")
     base, encoder = load_base(config)
     retriever = PageImageRetriever(encoder, ROOT, batch_size=base["batch_size"], chunk_pages=base["chunk_pages"])
     cache = ROOT / "outputs" / "cache" / "finetune" / f"base_index_{file_sha256(PAGES)[:16]}.pt"
@@ -86,7 +94,7 @@ def mine(config: dict) -> None:
         rank = next(r for r, (p, _) in enumerate(ranked, 1) if p == q["page_id"])
         rows.append(q | {"negative": negative, "base_rank": rank})
         if i % 200 == 0:
-            print(f"[{i}/{len(queries)}]")
+            print(f"[{i}/{len(queries)}]", flush=True)
     with TRIPLETS.open("w", encoding="utf-8", newline="\n") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
@@ -107,7 +115,7 @@ def train(config: dict) -> None:
     from sentence_transformers.multi_vector_encoder.evaluation import MultiVectorInformationRetrievalEvaluator
     from sentence_transformers.multi_vector_encoder.losses import CachedMultiVectorMultipleNegativesRankingLoss
 
-    from multimodal_rag.retrieval.page_image import open_page_image
+    from multimodal_rag.retrieval.page_image import model_dir_sha256, open_page_image
 
     cfg = config["train"]
     pages = {p["page_id"]: p for p in load_jsonl(PAGES)}
@@ -161,9 +169,7 @@ def train(config: dict) -> None:
 
     final = model_dir / "final"
     model.save(str(final))
-    files = sorted(p for p in final.rglob("*") if p.is_file())
-    digest = hashlib.sha256(b"".join(p.relative_to(final).as_posix().encode() + bytes.fromhex(file_sha256(p))
-                                     for p in files)).hexdigest()
+    digest = model_dir_sha256(final)
     out = ROOT / "results" / "finetune" / stamp
     out.mkdir(parents=True, exist_ok=False)
     meta = {

@@ -1,0 +1,15 @@
+# Method C-ft: method C with ColQwen2.5 fine-tuned on decks of companies that are
+# not in the evaluation set (configs/finetune_c.toml, results/finetune/20261102-073228).
+# Fixed before the first evaluation run (2026-11-02); evaluated once.
+
+method = "C-ft"
+# The best checkpoint by the validation companies' MRR@10 (LoRA adapters on top of
+# vidore/colqwen2.5-base, the same base as vidore/colqwen2.5-v0.2). The base model
+# is loaded from the local Hugging Face cache at snapshot
+# 92908120384b7a2110c5beda3ab29cbdb2c08e49, the one method C also used.
+model_path = "outputs/models/colqwen_ft/20261102-073228/final"
+model_sha256 = "ea9f95e0aabd8d7559067819abce9567f255d6c5a9a165b28c57a8fc925a270d"
+torch_dtype = "bfloat16"
+# The same as configs/method_c.toml (they don't change results).
+batch_size = 2
+chunk_pages = 16

@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from multimodal_rag.finetune.data import pick_hard_negative, split_by_company
+from multimodal_rag.finetune.data import drop_ambiguous_queries, pick_hard_negative, split_by_company
 from multimodal_rag.finetune.queries import parse_queries, query_cache_path, query_request_body, settings_key
 
 QCFG = {"model": "google/gemini-x", "provider": "google-ai-studio", "reasoning_effort": "low",
@@ -29,6 +29,13 @@ def test_no_hard_negative_when_no_page_of_the_company_qualifies():
 def test_positive_missing_from_ranking_raises():
     with pytest.raises(ValueError):
         pick_hard_negative([("acme/d/p2", 1.0)], positive="acme/d/p1", max_ratio=0.95)
+
+
+def test_queries_generated_for_two_pages_are_dropped():
+    # "q1" was written for p1 and p2 (same figure on both): neither row can be trained on
+    rows = [{"query": "q1", "page_id": "acme/d/p1"}, {"query": "q2", "page_id": "acme/d/p1"},
+            {"query": "q1", "page_id": "acme/d/p2"}, {"query": "q3", "page_id": "acme/d/p3"}]
+    assert drop_ambiguous_queries(rows) == [rows[1], rows[3]]
 
 
 def test_split_by_company_keeps_each_company_on_one_side():

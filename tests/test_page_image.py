@@ -4,7 +4,7 @@ from PIL import Image
 from sentence_transformers.util import maxsim
 
 from multimodal_rag.eval.runner import check_hits
-from multimodal_rag.retrieval.page_image import PageImageRetriever
+from multimodal_rag.retrieval.page_image import PageImageRetriever, load_encoder, model_dir_sha256
 
 
 def test_maxsim_by_hand():
@@ -90,3 +90,23 @@ def test_save_and_load_index_round_trip(tmp_path, pages):
 def test_search_before_index_fails(tmp_path):
     with pytest.raises(RuntimeError):
         PageImageRetriever(FakeEncoder(), root=tmp_path).search("q", k=1)
+
+
+def test_model_dir_sha256_changes_with_contents_and_names(tmp_path):
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "a.bin").write_bytes(b"weights")
+    first = model_dir_sha256(tmp_path)
+    (tmp_path / "sub" / "a.bin").write_bytes(b"weights2")
+    assert model_dir_sha256(tmp_path) != first
+    (tmp_path / "sub" / "a.bin").write_bytes(b"weights")
+    assert model_dir_sha256(tmp_path) == first
+    (tmp_path / "sub" / "a.bin").rename(tmp_path / "sub" / "b.bin")
+    assert model_dir_sha256(tmp_path) != first
+
+
+def test_load_encoder_refuses_a_model_dir_with_another_hash(tmp_path):
+    (tmp_path / "final").mkdir()
+    (tmp_path / "final" / "adapter.bin").write_bytes(b"retrained")
+    config = {"model_path": "final", "model_sha256": "0" * 64, "torch_dtype": "bfloat16"}
+    with pytest.raises(ValueError, match="sha256"):
+        load_encoder(config, tmp_path)

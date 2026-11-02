@@ -3,6 +3,7 @@
 Run with:  uv run python scripts/run_eval.py --config configs/method_a.toml
            uv run python scripts/run_eval.py --config configs/method_b2.toml  (after scripts/make_captions.py)
            uv run python scripts/run_eval.py --config configs/method_c.toml
+           uv run python scripts/run_eval.py --config configs/method_c_ft.toml  (after scripts/finetune_colqwen.py)
            uv run python scripts/run_eval.py --config configs/method_d.toml  (fuses A and C)
 
 Every page is ranked for every question (search depth = number of pages), so
@@ -31,7 +32,7 @@ QUESTIONS = ROOT / "eval" / "questions.csv"
 # Settings that change the index (and so belong in the cache key) per method.
 # Batch sizes and chunking only change speed and memory, not the vectors.
 TEXT_EMBED_SETTINGS = ("model", "revision", "torch_dtype", "max_seq_length")
-INDEX_SUFFIX = {"A": ".npz", "B2": ".npz", "C": ".pt"}
+INDEX_SUFFIX = {"A": ".npz", "B2": ".npz", "C": ".pt", "C-ft": ".pt"}
 CAPTIONS_DIR = ROOT / "outputs" / "cache" / "captions_b2"
 
 
@@ -54,6 +55,8 @@ def index_settings(config: dict) -> dict:
         return {k: config["embed"][k] for k in TEXT_EMBED_SETTINGS} | {"captions": settings_key(config["caption"])}
     if method == "C":
         return {k: config[k] for k in ("model", "revision", "torch_dtype")}
+    if method == "C-ft":
+        return {k: config[k] for k in ("model_path", "model_sha256", "torch_dtype")}
     raise ValueError(f"unknown method {method!r}")
 
 
@@ -103,10 +106,10 @@ def build_retriever(config: dict, pages: list[dict]) -> tuple[object, dict]:
         }}
         print(json.dumps(notes["captions"]))
         return CaptionDenseRetriever(encoder, batch_size=config["embed"]["batch_size"]), notes
-    if method == "C":
+    if method in ("C", "C-ft"):
         from multimodal_rag.retrieval.page_image import PageImageRetriever, load_encoder
 
-        encoder = load_encoder(config)
+        encoder = load_encoder(config, ROOT)
         retriever = PageImageRetriever(encoder, ROOT, batch_size=config["batch_size"], chunk_pages=config["chunk_pages"])
         return retriever, {}
     raise ValueError(f"unknown method {method!r}")

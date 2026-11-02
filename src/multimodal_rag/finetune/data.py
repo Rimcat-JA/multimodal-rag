@@ -30,6 +30,19 @@ def pick_hard_negative(ranked: list[tuple[str, float]], positive: str, max_ratio
     return None
 
 
+def drop_ambiguous_queries(rows: list[dict]) -> list[dict]:
+    """Rows whose query text was also generated for another page are dropped.
+
+    A summary page often repeats a figure from a detail page, so the generator
+    can write the same question for both. Training would then call one of them
+    the answer and the other a negative (in-batch or hard), which is wrong.
+    """
+    pages_by_query: dict[str, set[str]] = {}
+    for r in rows:
+        pages_by_query.setdefault(r["query"], set()).add(r["page_id"])
+    return [r for r in rows if len(pages_by_query[r["query"]]) == 1]
+
+
 def split_by_company(rows: list[dict], val_companies: set[str]) -> tuple[list[dict], list[dict]]:
     """Rows of validation companies go to the second list; no company is on both sides."""
     train = [r for r in rows if company_of(r["page_id"]) not in val_companies]
