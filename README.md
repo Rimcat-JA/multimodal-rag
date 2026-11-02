@@ -9,7 +9,7 @@ Which retrieval method works best for questions about the charts and tables in J
 - **Searching page images beats searching page text.** ColQwen2.5 (C) finds a page with the evidence in the top 5 for 85% of questions, against 66% for text embeddings (A). Answer accuracy rises from 0.625 to 0.775 (+0.150, 95% interval [+0.037, +0.263]).
 - **Asking a local VLM to caption every figure first (B2) did not help**, and it cost 5.2 GPU hours to index. About 9% of pages got no usable caption because the model looped.
 - **Fusing text and image rankings (D) was worse than images alone** on MRR (−0.076 [−0.151, −0.005]). The weaker text ranking pulled down pages that C had ranked first. This was not what I predicted before running it.
-- **Fine-tuning the image retriever on other companies' decks helped further.** ColQwen2.5 trained for 48 minutes on 1,091 synthetic questions about 8 companies that are not in the evaluation set (C-ft) raised Recall@1 from 0.625 to 0.688 and answer accuracy from 0.775 to 0.838 (+0.062 [+0.013, +0.125] over C). One training run, one seed.
+- **Fine-tuning the image retriever on other companies' decks helped further.** ColQwen2.5 trained for 48 minutes on 1,091 synthetic questions about 8 companies that are not in the evaluation set (C-ft) raised Recall@1 from 0.625 to 0.688 and answer accuracy from 0.775 to 0.838 (+0.062 [+0.013, +0.125] over C). Retrained with two more seeds, its MRR gain over C was +0.035, +0.015 and +0.028 (mean +0.026): every run beat C, but the reported run was the best of the three.
 - **Retrieval, not reading, limits the answers.** When the top 5 pages contain the evidence, Gemini answers about 91–96% correctly with any method. With the gold pages given directly it reaches 0.925.
 
 ```mermaid
@@ -160,7 +160,7 @@ These misses hit every condition similarly, so the comparison changes little, bu
 - **Caption loops (B2).** 125 of 1,429 pages (8.7%) got no usable caption. Ollama stopped 23 of them for repeating tokens. The other 102 hit the 4,096-token output cap, and 100 of those ended in a repeated string. Failed pages are kept as "no figures", because with temperature 0 and a fixed seed a retry fails the same way. 10 of the 127 gold pages are affected. A repetition penalty and recaptioning would probably help; that was not done.
 - **Hallucinated figures (B2).** On section-divider pages, the model sometimes invents charts. The prompt was revised once before the full run, checked only on pages that are not gold pages, and then frozen.
 - **C uses an English-trained retriever.** `vidore/colqwen2.5-v0.2` is trained mainly on English documents, and the queries are Japanese. C-ft is a first step toward adapting it.
-- **C-ft is one training run.** The intervals above cover which questions were asked, not how much a retrained model would differ. The training questions were written by Gemini and not checked by a person.
+- **C-ft's headline numbers come from one of three training runs, and it was the best one.** The other two seeds gain less over C (below). Answers were generated only for the seed-42 run. The training questions were written by Gemini and not checked by a person.
 - **Answers can't be regenerated identically.** Gemini 3.x ignores temperature, and `gemini-3.8-flash` has no dated id. Reproducibility rests on the cached replies and on the provider and model recorded for each reply.
 - **The upper bound sees more pages for some questions.** It passes every gold page, which is up to 8 pages. The methods pass 5.
 - **The evaluation set is mostly AI-written.** 72 of 80 questions were written by Claude and checked by another AI, not by a person. On the 8 developer-written questions C is also first, but 8 is too few to say more.
@@ -198,12 +198,25 @@ C's misses were almost all within the right company, so C's model was trained fu
 
 The run is recorded in [results/finetune/20261102-073228/run.json](results/finetune/20261102-073228/run.json): data hashes, every validation score and the model's SHA-256. `run_eval.py` checks that hash before evaluating, so a retrained model can't be evaluated under the old config. The training run was made with one uncommitted change, the duplicate-question filter in step 2, which was committed right after.
 
+**How much does a retrained model differ?** The intervals above cover which questions were asked, not the training run. So C-ft was trained twice more with `[train] seed` 43 and 44, all else equal, and each run was evaluated once ([results/c-ft_seeds.md](results/c-ft_seeds.md)). Validation MRR@10 barely moved (0.820, 0.818, 0.817), but on the 80 questions the gain over C varied more:
+
+| Seed | Recall@1 | Recall@5 | MRR | MRR − C [95% interval] |
+|---|---|---|---|---|
+| 42 (above) | 0.688 | 0.900 | 0.772 | +0.035 [+0.007, +0.068] |
+| 43 | 0.650 | 0.887 | 0.752 | +0.015 [−0.005, +0.040] |
+| 44 | 0.675 | 0.887 | 0.765 | +0.028 [+0.003, +0.057] |
+| mean | 0.671 | 0.892 | 0.763 | +0.026 |
+
+Every seed beats C on MRR, Recall@1 and Recall@5, so the direction holds. The size is smaller than the seed-42 run suggests: about +0.026 MRR rather than +0.035. Seed 42 stays the reported C-ft because it was fixed before the other seeds were trained; switching to another seed after seeing the results would be choosing on the test set.
+
 ```powershell
 uv run python scripts/download_sources.py --split train
 uv run python scripts/ingest_pages.py --split train
 uv run python scripts/make_train_queries.py --config configs/finetune_c.toml   # about 860 API calls, $1.14
 uv run python scripts/finetune_colqwen.py mine  --config configs/finetune_c.toml
 uv run python scripts/finetune_colqwen.py train --config configs/finetune_c.toml
+uv run python scripts/finetune_colqwen.py train --config configs/finetune_c.toml --seed 43   # and 44
+uv run python scripts/compare_seeds.py   # after run_eval.py with configs/method_c_ft_seed43.toml and _seed44.toml
 ```
 
 ## Design decisions
