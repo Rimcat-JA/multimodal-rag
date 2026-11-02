@@ -3,8 +3,10 @@
 Run with:  uv run python scripts/finetune_colqwen.py mine  --config configs/finetune_c.toml
            uv run python scripts/finetune_colqwen.py train --config configs/finetune_c.toml [--seed 43]
 
-mine   indexes data/train/pages.jsonl with the base model (cached in outputs/cache/finetune/)
-       and writes data/train/triplets.jsonl: each training query with its positive page and
+The data files come from the config's [data] section (pages, queries, triplets).
+
+mine   indexes the pages with the base model (cached in outputs/cache/finetune/)
+       and writes the triplets file: each training query with its positive page and
        one hard negative (src/multimodal_rag/finetune/data.py). Queries generated for more
        than one page are dropped first.
 train  trains the LoRA adapters with in-batch + hard negatives (CachedMultiVectorMultipleNegatives-
@@ -13,6 +15,9 @@ train  trains the LoRA adapters with in-batch + hard negatives (CachedMultiVecto
        Metadata (config, data hashes, validation scores, git state) goes to results/finetune/<timestamp>/.
        --seed replaces [train] seed (data order and dropout) to measure run-to-run variation; the
        validation companies stay the same. The seed used is recorded in run.json's config.
+       [split] val_companies fixes the validation companies instead of sampling them, and
+       [split] val_triplets takes their queries from another run's triplets file, so runs with
+       different training data are scored on the same validation queries.
 
 The evaluation set (data/pages.jsonl, eval/questions.csv) is never read here.
 """
@@ -39,10 +44,6 @@ from multimodal_rag.finetune.data import (
 )
 
 ROOT = Path(__file__).resolve().parent.parent
-TRAIN = ROOT / "data" / "train"
-PAGES = TRAIN / "pages.jsonl"
-QUERIES = TRAIN / "queries.jsonl"
-TRIPLETS = TRAIN / "triplets.jsonl"
 SOURCES = ROOT / "docs" / "train_sources.csv"
 
 
@@ -58,7 +59,13 @@ def check_no_eval_companies() -> None:
         raise SystemExit(f"training decks include evaluation companies {sorted(overlap)}")
 
 
+def data_paths(config: dict) -> dict[str, Path]:
+    return {name: ROOT / path for name, path in config["data"].items()}
+
+
 def val_companies(config: dict, pages: list[dict]) -> set[str]:
+    if "val_companies" in config["split"]:
+        return set(config["split"]["val_companies"])
     companies = sorted({company_of(p["page_id"]) for p in pages})
     return set(random.Random(config["split"]["seed"]).sample(companies, config["split"]["n_val_companies"]))
 
@@ -73,12 +80,13 @@ def load_base(config: dict):
 def mine(config: dict) -> None:
     from multimodal_rag.retrieval.page_image import PageImageRetriever
 
-    pages, all_queries = load_jsonl(PAGES), load_jsonl(QUERIES)
+    paths = data_paths(config)
+    pages, all_queries = load_jsonl(paths["pages"]), load_jsonl(paths["queries"])
     queries = drop_ambiguous_queries(all_queries)
     print(f"{len(all_queries) - len(queries)} queries dropped: the same text was generated for more than one page")
     base, encoder = load_base(config)
     retriever = PageImageRetriever(encoder, ROOT, batch_size=base["batch_size"], chunk_pages=base["chunk_pages"])
-    cache = ROOT / "outputs" / "cache" / "finetune" / f"base_index_{file_sha256(PAGES)[:16]}.pt"
+    cache = ROOT / "outputs" / "cache" / "finetune" / f"base_index_{file_sha256(paths['pages'])[:16]}.pt"
     if cache.exists():
         retriever.load_index(cache)
     else:
@@ -86,7 +94,7 @@ def mine(config: dict) -> None:
         cache.parent.mkdir(parents=True, exist_ok=True)
         retriever.save_index(cache)
     if retriever.page_ids != [p["page_id"] for p in pages]:
-        raise SystemExit(f"{cache} does not match {PAGES}; delete it")
+        raise SystemExit(f"{cache} does not match {paths['pages']}; delete it")
 
     rows, n_without = [], 0
     for i, q in enumerate(queries, 1):
@@ -97,7 +105,7 @@ def mine(config: dict) -> None:
         rows.append(q | {"negative": negative, "base_rank": rank})
         if i % 200 == 0:
             print(f"[{i}/{len(queries)}]", flush=True)
-    with TRIPLETS.open("w", encoding="utf-8", newline="\n") as f:
+    with paths["triplets"].open("w", encoding="utf-8", newline="\n") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
     ranks = [r["base_rank"] for r in rows]
@@ -120,10 +128,15 @@ def train(config: dict) -> None:
     from multimodal_rag.retrieval.page_image import model_dir_sha256, open_page_image
 
     cfg = config["train"]
-    pages = {p["page_id"]: p for p in load_jsonl(PAGES)}
-    triplets = [t for t in load_jsonl(TRIPLETS) if t["negative"] is not None]
+    paths = data_paths(config)
+    pages = {p["page_id"]: p for p in load_jsonl(paths["pages"])}
+    triplets = [t for t in load_jsonl(paths["triplets"]) if t["negative"] is not None]
     val = val_companies(config, list(pages.values()))
     train_rows, val_rows = split_by_company(triplets, val)
+    if "val_triplets" in config["split"]:
+        paths["val_triplets"] = ROOT / config["split"]["val_triplets"]
+        other = [t for t in load_jsonl(paths["val_triplets"]) if t["negative"] is not None]
+        val_rows = split_by_company(other, val)[1]
     print(f"validation companies {sorted(val)}: {len(train_rows)} training triplets, {len(val_rows)} validation queries")
 
     def image_path(page_id: str) -> str:
@@ -177,7 +190,7 @@ def train(config: dict) -> None:
     meta = {
         "config": config, "base_config": base, "timestamp": started.isoformat(timespec="seconds"),
         "data": {name: {"path": path.relative_to(ROOT).as_posix(), "sha256": file_sha256(path)}
-                 for name, path in (("train_sources", SOURCES), ("pages", PAGES), ("queries", QUERIES), ("triplets", TRIPLETS))},
+                 for name, path in {"train_sources": SOURCES} | paths},
         "val_companies": sorted(val), "n_train_triplets": len(train_rows), "n_val_queries": len(val_rows),
         "n_val_pages": len(val_pages), "trainable_parameters": n_trainable,
         "validation_before": before, "validation_after": after, "log_history": trainer.state.log_history,

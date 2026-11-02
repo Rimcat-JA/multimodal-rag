@@ -3,9 +3,9 @@
 Run with:  uv run python scripts/make_train_queries.py --config configs/finetune_c.toml --limit 5   (trial)
            uv run python scripts/make_train_queries.py --config configs/finetune_c.toml              (all pages)
 
-Reads data/train/pages.jsonl and docs/train_sources.csv (company name and
+Reads the config's [data] pages file and docs/train_sources.csv (company name and
 period label for the prompt). Every reply is cached under outputs/cache/train_queries/,
-so a stopped run resumes and a rerun costs nothing. Writes data/train/queries.jsonl:
+so a stopped run resumes and a rerun costs nothing. Writes the [data] queries file:
 one line per (query, page). A reply that can't be parsed is reported and gives no queries.
 """
 
@@ -20,22 +20,22 @@ from multimodal_rag.finetune.queries import parse_queries, query_cache_path, que
 from multimodal_rag.generation.api import api_key, call_with_cache, chat
 
 ROOT = Path(__file__).resolve().parent.parent
-PAGES = ROOT / "data" / "train" / "pages.jsonl"
 SOURCES = ROOT / "docs" / "train_sources.csv"
 CACHE = ROOT / "outputs" / "cache" / "train_queries"
-OUT = ROOT / "data" / "train" / "queries.jsonl"
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, required=True)
-    parser.add_argument("--limit", type=int, help="only the first N pages (trial; queries.jsonl is not written)")
+    parser.add_argument("--limit", type=int, help="only the first N pages (trial; the queries file is not written)")
     args = parser.parse_args()
-    config = tomllib.loads(args.config.read_text(encoding="utf-8"))["queries"]
+    full_config = tomllib.loads(args.config.read_text(encoding="utf-8"))
+    config = full_config["queries"]
+    pages_path, out = (ROOT / full_config["data"][name] for name in ("pages", "queries"))
 
     with SOURCES.open(encoding="utf-8") as f:
         decks = {f"{r['company_id']}/{r['period']}": r for r in csv.DictReader(f)}
-    with PAGES.open(encoding="utf-8") as f:
+    with pages_path.open(encoding="utf-8") as f:
         pages = [json.loads(line) for line in f]
     if args.limit:
         pages = pages[:: max(1, len(pages) // args.limit)][: args.limit]  # spread the trial over decks
@@ -64,12 +64,12 @@ def main() -> None:
     n_with = len({r["page_id"] for r in rows})
     print(f"{len(rows)} queries for {n_with}/{len(pages)} pages; {n_failed} unparseable; cost of these replies ${cost:.3f}")
     if args.limit:
-        print("trial run: queries.jsonl not written")
+        print("trial run: queries file not written")
         return
-    with OUT.open("w", encoding="utf-8", newline="\n") as f:
+    with out.open("w", encoding="utf-8", newline="\n") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    print(f"saved to {OUT.relative_to(ROOT).as_posix()}")
+    print(f"saved to {out.relative_to(ROOT).as_posix()}")
 
 
 if __name__ == "__main__":

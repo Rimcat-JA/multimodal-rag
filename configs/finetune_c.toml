@@ -6,6 +6,15 @@
 # The model being fine-tuned: the same checkpoint as configs/method_c.toml.
 base = "configs/method_c.toml"
 
+[data]
+# Training data files. pages_v1.jsonl is the 858-page list this config was trained on
+# (sha256 412b8b31..., as recorded in results/finetune/20261102-073228/run.json); it
+# was copied from data/train/pages.jsonl before more decks were added for
+# configs/finetune_c_v2.toml.
+pages = "data/train/pages_v1.jsonl"
+queries = "data/train/queries.jsonl"
+triplets = "data/train/triplets.jsonl"
+
 [queries]
 # Synthetic training queries, one request per page (scripts/make_train_queries.py).
 model = "google/gemini-3.8-flash"
