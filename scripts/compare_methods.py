@@ -14,6 +14,7 @@ Everything is computed from run.json / per_question.csv; nothing is re-run.
 
 import csv
 import json
+import textwrap
 from pathlib import Path
 
 import matplotlib
@@ -289,7 +290,9 @@ def main() -> None:
             for i, c in enumerate(conditions):
                 ax.annotate(f"{acc[c]:.3f}", (i, acc[c]), xytext=(0, 4), textcoords="offset points",
                             ha="center", color=theme["text"])
-            ax.set_xticks(range(len(conditions)), [LABELS.get(c, GOLD_LABEL).replace(": ", "\n").replace(" (", "\n(") for c in conditions],
+            # One line per part, each wrapped so that neighbouring labels don't touch.
+            parts = [LABELS.get(c, GOLD_LABEL).replace(": ", "\n").replace(" (", "\n(").split("\n") for c in conditions]
+            ax.set_xticks(range(len(conditions)), ["\n".join(textwrap.fill(x, 16) for x in ps) for ps in parts],
                           color=theme["text"])
             ax.set_ylim(0, 1.05)
             ax.set_title(f"Answer accuracy on {len(qids)} questions (top {answer_meta['config']['top_k']} pages)",

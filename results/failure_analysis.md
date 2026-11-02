@@ -11,6 +11,7 @@ A miss is a question whose top 5 pages don't cover every gold group. Each miss i
 | B2: VLM figure captions (Qwen2.5-VL) | 65/80 |
 | C: page images (ColQwen2.5) | 76/80 |
 | D: A + C fused (RRF) | 72/80 |
+| C-ft: page images (ColQwen2.5 fine-tuned) | 77/80 |
 
 ## Misses by type (top 5)
 
@@ -20,6 +21,7 @@ A miss is a question whose top 5 pages don't cover every gold group. Each miss i
 | B2: VLM figure captions (Qwen2.5-VL) | 32 | 6 | 5 | 14 | 7 |
 | C: page images (ColQwen2.5) | 12 | 2 | 5 | 5 | 0 |
 | D: A + C fused (RRF) | 13 | 3 | 2 | 8 | 0 |
+| C-ft: page images (ColQwen2.5 fine-tuned) | 8 | 2 | 2 | 4 | 0 |
 
 ## Every miss
 
@@ -109,3 +111,11 @@ A miss is a question whose top 5 pages don't cover every gold group. Each miss i
 | D | q045 | chart | lookup | 112 | other deck | `mufg/fy2025_full/p002` |
 | D | q048 | table | lookup | 7 | other page | `tokiomarine/fy2025_full/p011` |
 | D | q053 | chart | trend | 194 | other company | `daiichisankyo/fy2025_full/p012` |
+| C-ft | q010 | table | compare | 38 | other page | `smfg/fy2026_q1/p018` |
+| C-ft | q021 | text | trend | 7 | other page | `fujitsu/fy2025_full/p045` |
+| C-ft | q026 | diagram | structure | 6 | other page | `astellas/fy2026_q1/p003` |
+| C-ft | q029 | diagram | structure | 26 | other deck | `takeda/fy2026_q1/p036` |
+| C-ft | q030 | diagram | compare | 22 | other page | `daiichisankyo/fy2025_full/p021` |
+| C-ft | q033 | chart | compare | 68 | other company | `toyota/fy2026_q1/p018` |
+| C-ft | q045 | chart | lookup | 29 | other deck | `mufg/fy2025_full/p002` |
+| C-ft | q053 | chart | trend | 72 | other company | `mufg/fy2025_full/p068` |

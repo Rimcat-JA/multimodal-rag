@@ -1,0 +1,425 @@
+{
+  "config": {
+    "top_k": 5,
+    "runs": {
+      "A": "results/method_a/20261101-160233",
+      "B2": "results/method_b2/20261101-160250",
+      "C": "results/method_c/20261101-160315",
+      "D": "results/method_d/20261101-160344",
+      "C-ft": "results/method_c-ft/20261102-120112"
+    },
+    "generator": {
+      "model": "google/gemini-3.8-flash",
+      "provider": "google-ai-studio",
+      "reasoning_effort": "medium",
+      "max_tokens": 16384,
+      "prompt": "あなたは企業の決算説明資料を読んで質問に答えます。添付したページ画像だけを根拠に答えてください。画像に書かれていないことを推測で補わないでください。\n\n次の3つを JSON で返してください。\n- answer：質問への答えを日本語の1〜2文で書く。\n- value：答えが1つの数値なら、その数値だけを書く。資料に表示された桁数のまま、カンマと単位を付けず、負の値は - を付ける（例：37662、-2.6、4.0）。計算が必要な質問は計算した結果を書く。答えが数値でなければ空文字にする。\n- unit：value の単位を、質問または資料の表記どおりに書く（例：億円、%、千台、pt）。value が空なら空文字にする。\n\n画像から答えが分からないときは、answer に「資料からは分かりません」と書き、value と unit は空文字にしてください。\n"
+    },
+    "grader": {
+      "model": "deepseek/deepseek-v4.1-flash-1017",
+      "provider": "deepseek",
+      "temperature": 0,
+      "reasoning_effort": "none",
+      "max_tokens": 1024,
+      "prompt": "あなたは採点者です。質問・正解・回答が与えられます。回答が正解と同じ内容を述べているかを判定してください。\n\n- 正解の要点がすべて回答に含まれ、正解と矛盾しなければ正しいとする。言い回しの違いは問わない。\n- 回答に正解にない情報が加わっていても、正解と矛盾しなければ減点しない。\n- 要点が欠けている、数値や固有名詞が違う、または「分からない」と答えている場合は誤りとする。\n\n次の形の JSON だけを返してください。correct は、正しければ true、誤りなら false にする。reason には判定の理由を日本語で1文書く。\n{\"correct\": true, \"reason\": \"正解の要点をすべて含み、矛盾しない。\"}\n"
+    }
+  },
+  "timestamp": "2026-11-02T12:10:06",
+  "eval_set": {
+    "path": "eval/questions.csv",
+    "sha256": "21ab091666011749dc2d42c24797f7865367f8bd99ac7d22a445026e76d59bbe",
+    "n": 80
+  },
+  "pages": {
+    "path": "data/pages.jsonl",
+    "sha256": "6fb6ef5446e192917e968b8b2f0d5453aae5012a048f7205f8059b27bf22ffc2"
+  },
+  "generator_served_by": [
+    "Google AI Studio:google/gemini-3.8-flash"
+  ],
+  "grader_models": [
+    "DeepSeek:deepseek/deepseek-v4.1-flash-1017"
+  ],
+  "generator_usage_total": {
+    "prompt_tokens": 2465898,
+    "completion_tokens": 297696,
+    "total_tokens": 2763594,
+    "cost": 2.9657834999999992,
+    "is_byok": 0
+  },
+  "n_unparseable": 0,
+  "n_unit_differs": 1,
+  "git": {
+    "commit": "f8a4c6ebac7a76c9e9226c0e765b24963e7b7451",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.12.10"
+  },
+  "summary": {
+    "A": {
+      "accuracy": 0.625,
+      "n": 80
+    },
+    "B2": {
+      "accuracy": 0.6125,
+      "n": 80
+    },
+    "C": {
+      "accuracy": 0.775,
+      "n": 80
+    },
+    "D": {
+      "accuracy": 0.7875,
+      "n": 80
+    },
+    "C-ft": {
+      "accuracy": 0.8375,
+      "n": 80
+    },
+    "gold": {
+      "accuracy": 0.925,
+      "n": 80
+    }
+  },
+  "by_evidence": {
+    "A": {
+      "chart": {
+        "accuracy": 0.53125,
+        "n": 32
+      },
+      "diagram": {
+        "accuracy": 0.75,
+        "n": 12
+      },
+      "table": {
+        "accuracy": 0.5833333333333334,
+        "n": 24
+      },
+      "text": {
+        "accuracy": 0.8333333333333334,
+        "n": 12
+      }
+    },
+    "B2": {
+      "chart": {
+        "accuracy": 0.5625,
+        "n": 32
+      },
+      "diagram": {
+        "accuracy": 0.8333333333333334,
+        "n": 12
+      },
+      "table": {
+        "accuracy": 0.5416666666666666,
+        "n": 24
+      },
+      "text": {
+        "accuracy": 0.6666666666666666,
+        "n": 12
+      }
+    },
+    "C": {
+      "chart": {
+        "accuracy": 0.75,
+        "n": 32
+      },
+      "diagram": {
+        "accuracy": 0.75,
+        "n": 12
+      },
+      "table": {
+        "accuracy": 0.7916666666666666,
+        "n": 24
+      },
+      "text": {
+        "accuracy": 0.8333333333333334,
+        "n": 12
+      }
+    },
+    "D": {
+      "chart": {
+        "accuracy": 0.78125,
+        "n": 32
+      },
+      "diagram": {
+        "accuracy": 0.8333333333333334,
+        "n": 12
+      },
+      "table": {
+        "accuracy": 0.75,
+        "n": 24
+      },
+      "text": {
+        "accuracy": 0.8333333333333334,
+        "n": 12
+      }
+    },
+    "C-ft": {
+      "chart": {
+        "accuracy": 0.84375,
+        "n": 32
+      },
+      "diagram": {
+        "accuracy": 0.75,
+        "n": 12
+      },
+      "table": {
+        "accuracy": 0.875,
+        "n": 24
+      },
+      "text": {
+        "accuracy": 0.8333333333333334,
+        "n": 12
+      }
+    },
+    "gold": {
+      "chart": {
+        "accuracy": 0.90625,
+        "n": 32
+      },
+      "diagram": {
+        "accuracy": 1.0,
+        "n": 12
+      },
+      "table": {
+        "accuracy": 0.9166666666666666,
+        "n": 24
+      },
+      "text": {
+        "accuracy": 0.9166666666666666,
+        "n": 12
+      }
+    }
+  },
+  "by_q_type": {
+    "A": {
+      "compare": {
+        "accuracy": 0.6086956521739131,
+        "n": 23
+      },
+      "lookup": {
+        "accuracy": 0.71875,
+        "n": 32
+      },
+      "structure": {
+        "accuracy": 0.7777777777777778,
+        "n": 9
+      },
+      "trend": {
+        "accuracy": 0.375,
+        "n": 16
+      }
+    },
+    "B2": {
+      "compare": {
+        "accuracy": 0.4782608695652174,
+        "n": 23
+      },
+      "lookup": {
+        "accuracy": 0.65625,
+        "n": 32
+      },
+      "structure": {
+        "accuracy": 0.8888888888888888,
+        "n": 9
+      },
+      "trend": {
+        "accuracy": 0.5625,
+        "n": 16
+      }
+    },
+    "C": {
+      "compare": {
+        "accuracy": 0.6956521739130435,
+        "n": 23
+      },
+      "lookup": {
+        "accuracy": 0.84375,
+        "n": 32
+      },
+      "structure": {
+        "accuracy": 0.7777777777777778,
+        "n": 9
+      },
+      "trend": {
+        "accuracy": 0.75,
+        "n": 16
+      }
+    },
+    "D": {
+      "compare": {
+        "accuracy": 0.7391304347826086,
+        "n": 23
+      },
+      "lookup": {
+        "accuracy": 0.84375,
+        "n": 32
+      },
+      "structure": {
+        "accuracy": 0.8888888888888888,
+        "n": 9
+      },
+      "trend": {
+        "accuracy": 0.6875,
+        "n": 16
+      }
+    },
+    "C-ft": {
+      "compare": {
+        "accuracy": 0.8260869565217391,
+        "n": 23
+      },
+      "lookup": {
+        "accuracy": 0.875,
+        "n": 32
+      },
+      "structure": {
+        "accuracy": 0.7777777777777778,
+        "n": 9
+      },
+      "trend": {
+        "accuracy": 0.8125,
+        "n": 16
+      }
+    },
+    "gold": {
+      "compare": {
+        "accuracy": 0.8695652173913043,
+        "n": 23
+      },
+      "lookup": {
+        "accuracy": 0.9375,
+        "n": 32
+      },
+      "structure": {
+        "accuracy": 1.0,
+        "n": 9
+      },
+      "trend": {
+        "accuracy": 0.9375,
+        "n": 16
+      }
+    }
+  },
+  "by_author": {
+    "A": {
+      "claude": {
+        "accuracy": 0.6388888888888888,
+        "n": 72
+      },
+      "human": {
+        "accuracy": 0.5,
+        "n": 8
+      }
+    },
+    "B2": {
+      "claude": {
+        "accuracy": 0.6111111111111112,
+        "n": 72
+      },
+      "human": {
+        "accuracy": 0.625,
+        "n": 8
+      }
+    },
+    "C": {
+      "claude": {
+        "accuracy": 0.7638888888888888,
+        "n": 72
+      },
+      "human": {
+        "accuracy": 0.875,
+        "n": 8
+      }
+    },
+    "D": {
+      "claude": {
+        "accuracy": 0.7916666666666666,
+        "n": 72
+      },
+      "human": {
+        "accuracy": 0.75,
+        "n": 8
+      }
+    },
+    "C-ft": {
+      "claude": {
+        "accuracy": 0.8333333333333334,
+        "n": 72
+      },
+      "human": {
+        "accuracy": 0.875,
+        "n": 8
+      }
+    },
+    "gold": {
+      "claude": {
+        "accuracy": 0.9166666666666666,
+        "n": 72
+      },
+      "human": {
+        "accuracy": 1.0,
+        "n": 8
+      }
+    }
+  },
+  "by_answerable": {
+    "A": {
+      "False": {
+        "accuracy": 0.07407407407407407,
+        "n": 27
+      },
+      "True": {
+        "accuracy": 0.9056603773584906,
+        "n": 53
+      }
+    },
+    "B2": {
+      "False": {
+        "accuracy": 0.09375,
+        "n": 32
+      },
+      "True": {
+        "accuracy": 0.9583333333333334,
+        "n": 48
+      }
+    },
+    "C": {
+      "False": {
+        "accuracy": 0.0,
+        "n": 12
+      },
+      "True": {
+        "accuracy": 0.9117647058823529,
+        "n": 68
+      }
+    },
+    "D": {
+      "False": {
+        "accuracy": 0.0,
+        "n": 13
+      },
+      "True": {
+        "accuracy": 0.9402985074626866,
+        "n": 67
+      }
+    },
+    "C-ft": {
+      "False": {
+        "accuracy": 0.0,
+        "n": 8
+      },
+      "True": {
+        "accuracy": 0.9305555555555556,
+        "n": 72
+      }
+    },
+    "gold": {
+      "True": {
+        "accuracy": 0.925,
+        "n": 80
+      }
+    }
+  }
+}

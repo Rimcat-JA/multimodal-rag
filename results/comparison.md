@@ -9,6 +9,7 @@ All runs use the same evaluation set (`eval/questions.csv`, sha256 `21ab09166601
 | B2: VLM figure captions (Qwen2.5-VL) | `results/method_b2/20261101-160250` | `39ae929` |
 | C: page images (ColQwen2.5) | `results/method_c/20261101-160315` | `39ae929` |
 | D: A + C fused (RRF) | `results/method_d/20261101-160344` | `39ae929` |
+| C-ft: page images (ColQwen2.5 fine-tuned) | `results/method_c-ft/20261102-120112` | `3e4dfba` |
 
 ## Overall
 
@@ -18,6 +19,7 @@ All runs use the same evaluation set (`eval/questions.csv`, sha256 `21ab09166601
 | B2: VLM figure captions (Qwen2.5-VL) | 0.388 | 0.537 | 0.600 | 0.484 |
 | C: page images (ColQwen2.5) | 0.625 | 0.825 | 0.850 | 0.737 |
 | D: A + C fused (RRF) | 0.537 | 0.762 | 0.838 | 0.661 |
+| C-ft: page images (ColQwen2.5 fine-tuned) | 0.688 | 0.812 | 0.900 | 0.772 |
 
 ## Difference from A (paired bootstrap, 10,000 resamples of questions, seed 0)
 
@@ -26,36 +28,38 @@ All runs use the same evaluation set (`eval/questions.csv`, sha256 `21ab09166601
 | B2: VLM figure captions (Qwen2.5-VL) | -0.035 [-0.133, +0.065] | -0.062 [-0.163, +0.037] |
 | C: page images (ColQwen2.5) | +0.219 [+0.124, +0.316] | +0.188 [+0.087, +0.287] |
 | D: A + C fused (RRF) | +0.142 [+0.082, +0.206] | +0.175 [+0.087, +0.263] |
+| C-ft: page images (ColQwen2.5 fine-tuned) | +0.253 [+0.162, +0.348] | +0.237 [+0.138, +0.338] |
 
-## D compared with C (same paired bootstrap)
+## Compared with C (same paired bootstrap)
 
-| | MRR − C [95% interval] | Recall@5 − C [95% interval] |
-|---|---|---|
-| D: A + C fused (RRF) | -0.076 [-0.151, -0.005] | -0.013 [-0.087, +0.062] |
+| | MRR − C [95% interval] | Recall@1 − C [95% interval] | Recall@5 − C [95% interval] | Answer accuracy − C [95% interval] |
+|---|---|---|---|---|
+| D: A + C fused (RRF) | -0.076 [-0.151, -0.005] | -0.087 [-0.200, +0.025] | -0.013 [-0.087, +0.062] | +0.013 [-0.062, +0.100] |
+| C-ft: page images (ColQwen2.5 fine-tuned) | +0.035 [+0.007, +0.068] | +0.062 [+0.013, +0.125] | +0.050 [+0.013, +0.100] | +0.062 [+0.013, +0.125] |
 
 ## By evidence type
 
 Few questions per group: treat differences here as observations, not conclusions.
 
-| Group | n | A R@5 | B2 R@5 | C R@5 | D R@5 | A MRR | B2 MRR | C MRR | D MRR |
-|---|---|---|---|---|---|---|---|---|---|
-| chart | 32 | 0.62 | 0.56 | 0.84 | 0.84 | 0.483 | 0.481 | 0.718 | 0.648 |
-| diagram | 12 | 0.83 | 0.83 | 0.75 | 0.83 | 0.650 | 0.652 | 0.644 | 0.649 |
-| table | 24 | 0.58 | 0.54 | 0.88 | 0.79 | 0.472 | 0.417 | 0.763 | 0.593 |
-| text | 12 | 0.75 | 0.58 | 0.92 | 0.92 | 0.575 | 0.456 | 0.831 | 0.843 |
+| Group | n | A R@5 | B2 R@5 | C R@5 | D R@5 | C-ft R@5 | A MRR | B2 MRR | C MRR | D MRR | C-ft MRR |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| chart | 32 | 0.62 | 0.56 | 0.84 | 0.84 | 0.91 | 0.483 | 0.481 | 0.718 | 0.648 | 0.744 |
+| diagram | 12 | 0.83 | 0.83 | 0.75 | 0.83 | 0.75 | 0.650 | 0.652 | 0.644 | 0.649 | 0.729 |
+| table | 24 | 0.58 | 0.54 | 0.88 | 0.79 | 0.96 | 0.472 | 0.417 | 0.763 | 0.593 | 0.794 |
+| text | 12 | 0.75 | 0.58 | 0.92 | 0.92 | 0.92 | 0.575 | 0.456 | 0.831 | 0.843 | 0.845 |
 
 ## By question author
 
 Few questions per group: treat differences here as observations, not conclusions.
 
-| Group | n | A R@5 | B2 R@5 | C R@5 | D R@5 | A MRR | B2 MRR | C MRR | D MRR |
-|---|---|---|---|---|---|---|---|---|---|
-| claude | 72 | 0.68 | 0.60 | 0.83 | 0.85 | 0.525 | 0.478 | 0.715 | 0.678 |
-| human | 8 | 0.50 | 0.62 | 1.00 | 0.75 | 0.459 | 0.536 | 0.938 | 0.506 |
+| Group | n | A R@5 | B2 R@5 | C R@5 | D R@5 | C-ft R@5 | A MRR | B2 MRR | C MRR | D MRR | C-ft MRR |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| claude | 72 | 0.68 | 0.60 | 0.83 | 0.85 | 0.89 | 0.525 | 0.478 | 0.715 | 0.678 | 0.756 |
+| human | 8 | 0.50 | 0.62 | 1.00 | 0.75 | 1.00 | 0.459 | 0.536 | 0.938 | 0.506 | 0.917 |
 
 ## Answer accuracy
 
-Answer run `results/answers/20261101-163404` (commit `e367b23`). `google/gemini-3.8-flash` (google-ai-studio) answers from the top 5 pages of each retrieval run above, or from the gold pages. Numeric questions are graded by rule; text questions by `deepseek/deepseek-v4.1-flash-1017` (deepseek).
+Answer run `results/answers/20261102-121006` (commit `f8a4c6e`). `google/gemini-3.8-flash` (google-ai-studio) answers from the top 5 pages of each retrieval run above, or from the gold pages. Numeric questions are graded by rule; text questions by `deepseek/deepseek-v4.1-flash-1017` (deepseek).
 
 | Condition | Accuracy | − A [95% interval] | Accuracy when the pages cover every gold group | Accuracy when they don't |
 |---|---|---|---|---|
@@ -63,4 +67,5 @@ Answer run `results/answers/20261101-163404` (commit `e367b23`). `google/gemini-
 | B2: VLM figure captions (Qwen2.5-VL) | 0.613 | -0.013 [-0.113, +0.087] | 0.958 (n=48) | 0.094 (n=32) |
 | C: page images (ColQwen2.5) | 0.775 | +0.150 [+0.037, +0.263] | 0.912 (n=68) | 0.000 (n=12) |
 | D: A + C fused (RRF) | 0.787 | +0.163 [+0.062, +0.263] | 0.940 (n=67) | 0.000 (n=13) |
+| C-ft: page images (ColQwen2.5 fine-tuned) | 0.838 | +0.212 [+0.100, +0.325] | 0.931 (n=72) | 0.000 (n=8) |
 | Gold pages given directly (upper bound) | 0.925 | +0.300 [+0.188, +0.412] | 0.925 (n=80) | – |
