@@ -1,7 +1,7 @@
 """Fine-tune ColQwen2.5 (method C) on training decks, choosing the checkpoint on held-out companies.
 
 Run with:  uv run python scripts/finetune_colqwen.py mine  --config configs/finetune_c.toml
-           uv run python scripts/finetune_colqwen.py train --config configs/finetune_c.toml
+           uv run python scripts/finetune_colqwen.py train --config configs/finetune_c.toml [--seed 43]
 
 mine   indexes data/train/pages.jsonl with the base model (cached in outputs/cache/finetune/)
        and writes data/train/triplets.jsonl: each training query with its positive page and
@@ -11,6 +11,8 @@ train  trains the LoRA adapters with in-batch + hard negatives (CachedMultiVecto
        RankingLoss), evaluates MRR@10 on the validation companies' queries against all their pages,
        keeps the best checkpoint, and saves it to outputs/models/colqwen_ft/<timestamp>/.
        Metadata (config, data hashes, validation scores, git state) goes to results/finetune/<timestamp>/.
+       --seed replaces [train] seed (data order and dropout) to measure run-to-run variation; the
+       validation companies stay the same. The seed used is recorded in run.json's config.
 
 The evaluation set (data/pages.jsonl, eval/questions.csv) is never read here.
 """
@@ -195,8 +197,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("step", choices=["mine", "train"])
     parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--seed", type=int, help="replaces [train] seed in the config (train only)")
     args = parser.parse_args()
     config = tomllib.loads(args.config.read_text(encoding="utf-8"))
+    if args.seed is not None:
+        config["train"]["seed"] = args.seed
     check_no_eval_companies()
     {"mine": mine, "train": train}[args.step](config)
 

@@ -9,7 +9,9 @@ Run with:  uv run python scripts/run_eval.py --config configs/method_a.toml
 Every page is ranked for every question (search depth = number of pages), so
 MRR sees the full ranking. The page index is cached in outputs/cache/<method>/,
 keyed by the settings that change it and the hash of data/pages.jsonl, and
-reused when nothing changed. Results go to results/method_<x>/<timestamp>/.
+reused when nothing changed. Results go to results/method_<x>/<timestamp>/, or to
+<results_dir>/<timestamp>/ when the config sets results_dir (used for the extra
+fine-tuning seeds, so they don't replace the C-ft run that compare_methods.py reads).
 """
 
 import argparse
@@ -173,7 +175,7 @@ def main() -> None:
         "versions": {pkg: version(pkg) for pkg in ("torch", "sentence-transformers", "transformers", "peft")}
         | {"python": platform.python_version()},
     }
-    out_dir = ROOT / "results" / f"method_{method.lower()}" / started.strftime("%Y%m%d-%H%M%S")
+    out_dir = ROOT / config.get("results_dir", f"results/method_{method.lower()}") / started.strftime("%Y%m%d-%H%M%S")
     run = save_run(out_dir, meta, results, questions)
 
     print(f"\nsaved to {out_dir.relative_to(ROOT)}")
