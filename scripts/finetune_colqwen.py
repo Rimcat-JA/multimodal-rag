@@ -190,7 +190,7 @@ def train(config: dict) -> None:
     meta = {
         "config": config, "base_config": base, "timestamp": started.isoformat(timespec="seconds"),
         "data": {name: {"path": path.relative_to(ROOT).as_posix(), "sha256": file_sha256(path)}
-                 for name, path in {"train_sources": SOURCES} | paths},
+                 for name, path in ({"train_sources": SOURCES} | paths).items()},
         "val_companies": sorted(val), "n_train_triplets": len(train_rows), "n_val_queries": len(val_rows),
         "n_val_pages": len(val_pages), "trainable_parameters": n_trainable,
         "validation_before": before, "validation_after": after, "log_history": trainer.state.log_history,
