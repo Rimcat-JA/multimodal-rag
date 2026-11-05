@@ -1,0 +1,89 @@
+{
+  "method": "C-ft",
+  "config": {
+    "method": "C-ft",
+    "results_dir": "results/c-ft-v2/seed43",
+    "model_path": "outputs/models/colqwen_ft/20261103-150025/final",
+    "model_sha256": "1303153857ee6ea0eeddfedbc65a08fc15346a7204dd7d74dada836f05469137",
+    "torch_dtype": "bfloat16",
+    "batch_size": 2,
+    "chunk_pages": 16
+  },
+  "search_depth": 1429,
+  "timestamp": "2026-11-05T03:47:56",
+  "eval_set": {
+    "path": "eval/questions.csv",
+    "sha256": "21ab091666011749dc2d42c24797f7865367f8bd99ac7d22a445026e76d59bbe",
+    "n": 80
+  },
+  "pages": {
+    "path": "data/pages.jsonl",
+    "sha256": "6fb6ef5446e192917e968b8b2f0d5453aae5012a048f7205f8059b27bf22ffc2",
+    "n": 1429
+  },
+  "index_cache": "outputs/cache/method_c-ft/19af4d25d3522ddc.pt",
+  "git": {
+    "commit": "f5c01fefe8770b5e460f2e91fd3e96e7159f2c46",
+    "dirty": false
+  },
+  "versions": {
+    "torch": "2.14.0+rocm10.1.0",
+    "sentence-transformers": "6.2.0",
+    "transformers": "5.22.1",
+    "peft": "0.21.2",
+    "python": "3.12.10"
+  },
+  "summary": {
+    "n": 80,
+    "recall@1": 0.7,
+    "recall@3": 0.8375,
+    "recall@5": 0.9,
+    "mrr": 0.786476800976801
+  },
+  "by_author": {
+    "claude": {
+      "n": 72,
+      "recall@1": 0.6944444444444444,
+      "recall@3": 0.8333333333333334,
+      "recall@5": 0.8888888888888888,
+      "mrr": 0.78080755664089
+    },
+    "human": {
+      "n": 8,
+      "recall@1": 0.75,
+      "recall@3": 0.875,
+      "recall@5": 1.0,
+      "mrr": 0.8375
+    }
+  },
+  "by_evidence": {
+    "chart": {
+      "n": 32,
+      "recall@1": 0.71875,
+      "recall@3": 0.8125,
+      "recall@5": 0.875,
+      "mrr": 0.7901156135531135
+    },
+    "diagram": {
+      "n": 12,
+      "recall@1": 0.6666666666666666,
+      "recall@3": 0.8333333333333334,
+      "recall@5": 0.8333333333333334,
+      "mrr": 0.744074074074074
+    },
+    "table": {
+      "n": 24,
+      "recall@1": 0.6666666666666666,
+      "recall@3": 0.8333333333333334,
+      "recall@5": 0.9583333333333334,
+      "mrr": 0.7724537037037038
+    },
+    "text": {
+      "n": 12,
+      "recall@1": 0.75,
+      "recall@3": 0.9166666666666666,
+      "recall@5": 0.9166666666666666,
+      "mrr": 0.8472222222222222
+    }
+  }
+}

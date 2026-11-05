@@ -41,14 +41,8 @@ def training_runs() -> dict[str, dict]:
     return out
 
 
-def main() -> None:
-    c_run = latest_clean_run("C")
-    ft_dirs = [d for d in [latest_clean_run("C-ft")] + [latest_clean(f) for f in sorted((RESULTS / "c-ft_seeds").glob("seed*"))] if d]
-    if c_run is None or not ft_dirs:
-        raise SystemExit("need a clean run of C and at least one of C-ft")
-
-    _, questions = load_questions(ROOT / "eval" / "questions.csv")
-    qids = [q["qid"] for q in questions]
+def seed_rows(ft_dirs: list[Path], c_run: Path, qids: list[str]) -> list[dict]:
+    """One row per evaluation run in ft_dirs, sorted by training seed, with scores and differences from C."""
     c_meta = json.loads((c_run / "run.json").read_text(encoding="utf-8"))
     c_ranks = load_ranks(c_run)
     trainings = training_runs()
@@ -69,14 +63,34 @@ def main() -> None:
                 raise SystemExit(f"{d} {metric}: recomputed {overall[metric]} != run.json {meta['summary'][metric]}")
         rows.append({
             "seed": training["config"]["train"]["seed"], "eval_run": d.relative_to(ROOT).as_posix(),
-            "train_run": training["dir"], "commit": meta["git"]["commit"][:7],
-            "val_mrr": training["validation_after"][VAL_METRIC], "overall": overall,
+            "train_run": training["dir"], "commit": meta["git"]["commit"][:7], "train_dirty": training["git"]["dirty"],
+            "val_mrr": training["validation_after"][VAL_METRIC], "overall": overall, "ranks": ranks,
             "mrr_vs_c": paired_bootstrap([reciprocal_rank(c_ranks[q]) for q in qids], [reciprocal_rank(ranks[q]) for q in qids]),
             "r1_vs_c": paired_bootstrap([answerable_within(c_ranks[q], 1) for q in qids], [answerable_within(ranks[q], 1) for q in qids]),
         })
     rows.sort(key=lambda r: r["seed"])
     if len({r["seed"] for r in rows}) != len(rows):
         raise SystemExit(f"two C-ft runs share a seed: {[r['seed'] for r in rows]}")
+    return rows
+
+
+def v1_dirs() -> list[Path]:
+    """The v1 C-ft evaluation runs: the main one and the extra seeds."""
+    dirs = [latest_clean_run("C-ft")] + [latest_clean(f) for f in sorted((RESULTS / "c-ft_seeds").glob("seed*"))]
+    return [d for d in dirs if d]
+
+
+def main() -> None:
+    c_run = latest_clean_run("C")
+    ft_dirs = v1_dirs()
+    if c_run is None or not ft_dirs:
+        raise SystemExit("need a clean run of C and at least one of C-ft")
+
+    _, questions = load_questions(ROOT / "eval" / "questions.csv")
+    qids = [q["qid"] for q in questions]
+    c_meta = json.loads((c_run / "run.json").read_text(encoding="utf-8"))
+    c_ranks = load_ranks(c_run)
+    rows = seed_rows(ft_dirs, c_run, qids)
 
     c_overall = scores([c_ranks[q] for q in qids])
     fmt = lambda t: f"{t[0]:+.3f} [{t[1]:+.3f}, {t[2]:+.3f}]"
