@@ -9,7 +9,7 @@ Which retrieval method works best for questions about the charts and tables in J
 - **Searching page images beats searching page text.** ColQwen2.5 (C) finds a page with the evidence in the top 5 for 85% of questions, against 66% for text embeddings (A). Answer accuracy rises from 0.625 to 0.775 (+0.150, 95% interval [+0.037, +0.263]).
 - **Asking a local VLM to caption every figure first (B2) did not help**, and it cost 5.2 GPU hours to index. About 9% of pages got no usable caption because the model looped.
 - **Fusing text and image rankings (D) was worse than images alone** on MRR (−0.076 [−0.151, −0.005]). The weaker text ranking pulled down pages that C had ranked first. This was not what I predicted before running it.
-- **Fine-tuning the image retriever on other companies' decks helped further.** ColQwen2.5 trained for 48 minutes on 1,091 synthetic questions about 8 companies that are not in the evaluation set (C-ft) raised Recall@1 from 0.625 to 0.688 and answer accuracy from 0.775 to 0.838 (+0.062 [+0.013, +0.125] over C). Retrained with two more seeds, its MRR gain over C was +0.035, +0.015 and +0.028 (mean +0.026): every run beat C, but the reported run was the best of the three.
+- **Fine-tuning the image retriever on other companies' decks helped further.** ColQwen2.5 trained for 48 minutes on 1,091 synthetic questions about 8 companies that are not in the evaluation set (C-ft) raised Recall@1 from 0.625 to 0.688 and answer accuracy from 0.775 to 0.838 (+0.062 [+0.013, +0.125] over C). Retrained with two more seeds, its MRR gain over C was +0.035, +0.015 and +0.028 (mean +0.026): every run beat C, but the reported run was the best of the three. Training on more data (20 companies, about 5 times the questions) raised validation scores clearly, but on the 80 questions the MRR gain over the first training data was +0.017 [−0.007, +0.042], within noise.
 - **Retrieval, not reading, limits the answers.** When the top 5 pages contain the evidence, Gemini answers about 91–96% correctly with any method. With the gold pages given directly it reaches 0.925.
 
 ```mermaid
@@ -160,7 +160,7 @@ These misses hit every condition similarly, so the comparison changes little, bu
 - **Caption loops (B2).** 125 of 1,429 pages (8.7%) got no usable caption. Ollama stopped 23 of them for repeating tokens. The other 102 hit the 4,096-token output cap, and 100 of those ended in a repeated string. Failed pages are kept as "no figures", because with temperature 0 and a fixed seed a retry fails the same way. 10 of the 127 gold pages are affected. A repetition penalty and recaptioning would probably help; that was not done.
 - **Hallucinated figures (B2).** On section-divider pages, the model sometimes invents charts. The prompt was revised once before the full run, checked only on pages that are not gold pages, and then frozen.
 - **C uses an English-trained retriever.** `vidore/colqwen2.5-v0.2` is trained mainly on English documents, and the queries are Japanese. C-ft is a first step toward adapting it.
-- **C-ft's headline numbers come from one of three training runs, and it was the best one.** The other two seeds gain less over C (below). Answers were generated only for the seed-42 run. The training questions were written by Gemini and not checked by a person.
+- **C-ft's headline numbers come from one of three training runs, and it was the best one.** The other two seeds gain less over C (below). Answers were generated only for the seed-42 run. The training questions were written by Gemini and not checked by a person. Gemini sometimes wrote the wrong fiscal period in a question, for example 2026年3月期 for a deck on the 2027年3月期 first quarter.
 - **Answers can't be regenerated identically.** Gemini 3.x ignores temperature, and `gemini-3.8-flash` has no dated id. Reproducibility rests on the cached replies and on the provider and model recorded for each reply.
 - **The upper bound sees more pages for some questions.** It passes every gold page, which is up to 8 pages. The methods pass 5.
 - **The evaluation set is mostly AI-written.** 72 of 80 questions were written by Claude and checked by another AI, not by a person. On the 8 developer-written questions C is also first, but 8 is too few to say more.
@@ -209,6 +209,15 @@ The run is recorded in [results/finetune/20261102-073228/run.json](results/finet
 
 Every seed beats C on MRR, Recall@1 and Recall@5, so the direction holds. The size is smaller than the seed-42 run suggests: about +0.026 MRR rather than +0.035. Seed 42 stays the reported C-ft because it was fixed before the other seeds were trained; switching to another seed after seeing the results would be choosing on the test set.
 
+**Does more training data help?** I added 12 companies and raised the questions from 2 to 4 per page (v2, [configs/finetune_c_v2.toml](configs/finetune_c_v2.toml)): 5,573 training questions on 20 companies, for $3.00 in API calls and about 3.6 hours per training run. Both changes were made together, so their effects can't be told apart. Validation used v1's 324 questions, so the scores compare directly. Before training, I fixed the mean validation MRR@10 over seeds 42, 43 and 44 as the comparison, and each v2 model was evaluated once ([results/c-ft_v2.md](results/c-ft_v2.md)).
+
+| Data | Validation MRR@10 (mean; 3 seeds) | Recall@1 | Recall@3 | Recall@5 | MRR | MRR − C, by seed |
+|---|---|---|---|---|---|---|
+| v1 | 0.818 (0.820, 0.818, 0.817) | 0.671 | 0.812 | 0.892 | 0.763 | +0.035, +0.015, +0.028 |
+| v2 | **0.840** (0.837, 0.843, 0.842) | 0.688 | 0.838 | 0.900 | 0.780 | +0.036, +0.049, +0.042 |
+
+On validation, every v2 run beat every v1 run (+0.022 on the mean). On the 80 questions, averaged over the seeds, v2 − v1 was +0.017 [−0.007, +0.042] on MRR and +0.017 [−0.025, +0.062] on Recall@1. The direction is the same, but the set is too small to confirm it. The validation questions are synthetic, like the training questions, so that gain may not carry over in full. The headline C-ft stays v1, seed 42, because moving to v2 after seeing these results would be choosing on the test set. No answers were generated for v2. The v1 seed-42 training run is the one made with an uncommitted change (above); all the others came from committed code. The first v2 seed-42 run reached validation MRR@10 0.843, but a bug lost its record, so it was discarded and retrained. The retrained run's 0.837 shows that the same seed can differ by that much.
+
 ```powershell
 uv run python scripts/download_sources.py --split train
 uv run python scripts/ingest_pages.py --split train
@@ -217,6 +226,10 @@ uv run python scripts/finetune_colqwen.py mine  --config configs/finetune_c.toml
 uv run python scripts/finetune_colqwen.py train --config configs/finetune_c.toml
 uv run python scripts/finetune_colqwen.py train --config configs/finetune_c.toml --seed 43   # and 44
 uv run python scripts/compare_seeds.py   # after run_eval.py with configs/method_c_ft_seed43.toml and _seed44.toml
+uv run python scripts/make_train_queries.py --config configs/finetune_c_v2.toml   # about 1,890 pages, $3.00
+uv run python scripts/finetune_colqwen.py mine  --config configs/finetune_c_v2.toml
+uv run python scripts/finetune_colqwen.py train --config configs/finetune_c_v2.toml --seed 42   # and 43, 44
+uv run python scripts/compare_train_data.py   # after run_eval.py with configs/method_c_ft_v2_seed42.toml, _seed43.toml and _seed44.toml
 ```
 
 ## Design decisions
